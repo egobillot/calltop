@@ -28,6 +28,7 @@ from bcc import BPF, syscall_name
 
 # Global definition
 DEBUG = 0
+INACT_THRSLD = 1000000000
 
 
 class CtCollection:
@@ -711,10 +712,10 @@ def run(display, b, pid_list, comm_list):
                 # map.clear() or item.__delitem__() are not thread safe !!
                 # Unfortunatly we need to delete items in the map, it saves
                 # entries in map.
-                # delete items that are no active since more than 5 sec
+                # delete items that are not active for more than 1 sec
                 # by assuming old entries won't create consistency issues
                 zeroed = False
-                if v.startTime < int(now - 5000000000):
+                if v.startTime < int(now - INACT_THRSLD):
                     b["map"].__delitem__(k)
                     zeroed = True
                 if ((k.pid != 0)
