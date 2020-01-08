@@ -621,7 +621,7 @@ def monotonic_time():
     if clock_gettime(CLOCK_MONOTONIC_RAW, ctypes.pointer(t)) != 0:
         errno_ = ctypes.get_errno()
         raise OSError(errno_, os.strerror(errno_))
-    return t.tv_sec + t.tv_nsec * 1e-9
+    return t.tv_sec * 1e9 + t.tv_nsec
 
 
 def create_and_load_bpf(syscall_list, latency):
@@ -714,7 +714,7 @@ def run(display, b, pid_list, comm_list):
                 # delete items that are no active since more than 5 sec
                 # by assuming old entries won't create consistency issues
                 zeroed = False
-                if v.startTime * 1e-9 < int(now - 5):
+                if v.startTime < int(now - 5000000000):
                     b["map"].__delitem__(k)
                     zeroed = True
                 if ((k.pid != 0)
