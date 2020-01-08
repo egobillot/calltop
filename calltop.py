@@ -34,21 +34,17 @@ class CtCollection:
     """This is a class used to define a collection of doc.
     """
     def __init__(self):
-        self.collection = []
+        self.collection = {}
 
-    def update(self, newDoc):
+    def collection_update(self, newDoc):
         """Update an existing document in the collection. If the
         document does not exist in the colelction, then add it.
             Args:
                 newDoc (Doc) : A document to be updated
         """
-        for doc in self.collection:
-            if doc.pid == newDoc.pid and doc.comm == newDoc.comm:
-                for stSysStats in newDoc.stSysStatsList:
-                    doc.updatestSysStats(stSysStats)
-                return
-        # did not found the existing doc. Insert it to the collection.
-        self.collection.append(newDoc)
+        doc = self.lookup_or_create(newDoc.pid, newDoc.comm)
+        for stSysStats in newDoc.stSysStatsList:
+            doc.updatestSysStats(stSysStats)
 
     def lookup_or_create(self, pid, comm):
         """Return the doc with the given pid and comm if it exists,
@@ -59,19 +55,24 @@ class CtCollection:
             Returns :
                 doc (Doc) : The doc new one or already existing
         """
-        for doc in self.collection:
-            if doc.pid == pid and doc.comm == comm:
-                return doc
-        # The doc does not exist, so create it and insert it
-        doc = Doc(pid, comm)
-        self.collection.append(doc)
+        # lookup
+        key = str(pid) + str(comm)
+        doc = self.collection.get(key, None)
+        # or create if look up failed
+        if doc is None:
+            doc = Doc(pid, comm)
+            key = str(pid) + str(comm)
+            self.collection[key] = doc
+
         return doc
 
     def drop(self):
         """Drop a collection and all its documents. It drops also
         all the stats in docs.
         """
-        del self.collection[0:]
+        for k, doc in self.collection.items():
+            del doc
+            del self.collection[k]
 
     def writeOutput(self):
         strOut = "|"+"=" * 77 + "|\n"
@@ -87,7 +88,7 @@ class CtCollection:
         return strOut
 
     def resetInfo(self):
-        for doc in self.collection:
+        for doc in self.collection.values():
             doc.sysTotalCntPerIntvl = 0
             doc.resetInfo()
 
@@ -372,7 +373,8 @@ class TopDisplay:
         self._printTabHeader()
         y_index = 0
         doc_id = 0
-        for doc in sorted(self.collection.collection, key=self._sortKey,
+        for doc in sorted(self.collection.collection.values(),
+                          key=self._sortKey,
                           reverse=self.reverseOrder):
             first = True
             doc_id += 1
@@ -728,8 +730,6 @@ def run(display, b, pid_list, comm_list):
                     doc = display.collection.lookup_or_create(k.pid, k.comm)
                     # update the stats for this doc
                     doc.updatestSysStats(sc)
-                    # The doc exists. So update it.
-                    display.collection.update(doc)
                     if zeroed is True:
                         doc.keep_previous_count(sc)
 
