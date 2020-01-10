@@ -435,9 +435,9 @@ class TopDisplay:
                     self._move(self.h - 1)
                 elif key == 122:  # z key
                     self._resetCollection()
-                elif key == 60:  # < key
+                elif key == 60 or key == 260:  # < or left key
                     self._changeSortColumn(-1)
-                elif key == 62:  # > key
+                elif key == 62 or key == 261:  # > or right key
                     self._changeSortColumn(1)
                 elif key == 113:  # q key
                     self.die = True
