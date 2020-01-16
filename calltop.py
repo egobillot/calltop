@@ -374,7 +374,7 @@ class TopDisplay:
         self.h, self.w = self._getDisplaySize()
         self.scr.clear()
         self._printTabHeader()
-        y_index = 0
+        y_index = -1
         doc_id = 0
         for doc in sorted(self.collection.collection.values(),
                           key=self._sortKey,
@@ -404,7 +404,8 @@ class TopDisplay:
                 line += "%15d" % stSysStats.total
 
                 color = doc_id % 2 + 1  # alternate color from pair 1 and 2
-                self._printLine(y_index - self.topLineIdx, line, False, color)
+                self._printLine(y_index + 1 - self.topLineIdx,
+                                line, False, color)
         self.bottomLineIdx = y_index
         self.printFooter("z: reset| >/<: sort| +/-: incr/decr sampling rate"
                          "| UP/Down (%d/%d)  [refresh=%1.1fs]"
