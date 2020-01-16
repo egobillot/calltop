@@ -429,6 +429,10 @@ class TopDisplay:
                 key = self.scr.getch()
                 if key == curses.KEY_UP:
                     self._move(-1)
+                elif key == 115:  # s
+                    self._move(0, "a")  # go back to first line
+                elif key == 101:  # s
+                    self._move(1e12, "a")  # go back to last line
                 elif key == curses.KEY_DOWN:
                     self._move(1)
                 elif key == curses.KEY_PPAGE:
@@ -453,14 +457,25 @@ class TopDisplay:
             except KeyboardInterrupt:
                 break
 
-    def _move(self, y):
-        """Scroll the page by y.
-        if y == 0 it refresh the screen
-        if y > 0, it goes down by y
-        if y < 0, it goes up by y
+    def _move(self, y, mode="r"):
+        """Scroll the page up or down.
+
+            Args:
+                y (int): if mode is relative, y is the nb of line to
+                scroll up (y<0) or down (y>0). if mode is absolute, y
+                will the first line of the screen.
+                mode (string) : "r" or "a" : relative or absolute scroll.
         """
-        self.topLineIdx = max(self.topLineIdx + y, 0)
-        self.topLineIdx = min(self.topLineIdx, self.bottomLineIdx)
+
+        if mode == "r":
+            self.topLineIdx = max(self.topLineIdx + y, 0)
+            self.topLineIdx = min(self.topLineIdx, self.bottomLineIdx)
+        elif mode == "a":
+            self.topLineIdx = max(y, 0)
+            self.topLineIdx = min(y, self.bottomLineIdx)
+        else:
+            return
+
         self.scr.erase()
         self.printBody()
 
