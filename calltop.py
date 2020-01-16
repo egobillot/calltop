@@ -353,16 +353,18 @@ class TopDisplay:
         self.scr.clear()
         self.w, self.h = self._getDisplaySize()
         curses.start_color()
-        # alternate color for the body:
-        # pair #1 is text = white and bckgrnd = black (233)
-        curses.init_pair(1, curses.COLOR_WHITE, 233)
-        # pair #2 is text = yellow and bckgrnd = grey (237s)
-        curses.init_pair(2, curses.COLOR_YELLOW, 237)
-        # pair #3 is text = black and bckgrnd = white
+        if curses.COLORS < 256:
+            # there is 0 shades of Grey !!
+            mygrey = curses.COLOR_BLACK
+            myblack = curses.COLOR_BLACK
+        else:
+            mygrey = 237
+            myblack = 233
+        # alternate color for the body with mygrey/myblack
+        curses.init_pair(1, curses.COLOR_WHITE, myblack)
+        curses.init_pair(2, curses.COLOR_YELLOW, mygrey)
         curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_WHITE)
-        # pair #4 is text = red and bckgrnd = white
         curses.init_pair(4, curses.COLOR_RED, curses.COLOR_WHITE)
-        # pair #5 is text = white and bckgrnd = red
         curses.init_pair(5, curses.COLOR_WHITE, curses.COLOR_RED)
 
     def printBody(self):
@@ -560,15 +562,16 @@ class TopDisplay:
         if highlight:
             option += curses.A_DIM
 
-        self.scr.addstr(y, 0, line[:self.w - 1],
-                        option + curses.color_pair(colorpair))
+        option += curses.color_pair(colorpair)
+
+        self.scr.addstr(y, 0, line[:self.w - 1], option)
         # self.scr.clrtoeol()
 
     def _printTabHeader(self):
         """Create and print the top Header.
         """
-        opt = curses.A_BOLD + curses.color_pair(3)
-        opt_selected = curses.A_BOLD + curses.color_pair(5)
+        opt = curses.color_pair(3)
+        opt_selected = curses.color_pair(5)
 
         w_index = 0
         for val in self.sortColumn:
