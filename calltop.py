@@ -652,7 +652,8 @@ def create_and_load_bpf(syscall_list, latency):
     sys_enter an sys_exit. In this case the #define TRACEPOINT is added.
     For latency #define LATENCY is added.
     """
-    with open('ebpf.c', 'r') as ebpf_code:
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    with open(dir_path + '/ebpf.c', 'r') as ebpf_code:
         prog = ebpf_code.read()
 
     if latency:
