@@ -24,7 +24,8 @@ import threading
 import traceback
 from time import sleep
 
-from bcc import BPF, syscall_name
+from bcc import BPF
+from bcc.syscall import syscall_name
 
 # Global definition
 DEBUG = 0
