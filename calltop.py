@@ -72,9 +72,9 @@ class CtCollection:
         """Drop a collection and all its documents. It drops also
         all the stats in docs.
         """
-        for k, doc in self.collection.items():
+        for doc in self.collection.values():
             del doc
-            del self.collection[k]
+        self.collection.clear()
 
     def writeOutput(self):
         strOut = "|"+"=" * 77 + "|\n"
@@ -388,28 +388,28 @@ class TopDisplay:
                         (y_index - self.topLineIdx > self.h - 2)):
                     continue
                 rps = stSysStats.cntPerIntvl / self.refreshIntvl
-                latency = "%.2f" % float(stSysStats.avgLat / 1000)
+                latency = b"%.2f" % float(stSysStats.avgLat / 1000)
 
                 if first:
-                    pid = doc.pid
+                    pid = b"%d" % doc.pid
                     comm = doc.comm
                     first = False
                 else:
-                    pid = comm = ""
+                    pid = comm = b""
 
-                line = "%6s " % pid
-                line += "%16s " % comm
-                line += "%20s " % stSysStats.name
-                line += "%15s " % str(latency)
-                line += "%15d " % rps
-                line += "%15d" % stSysStats.total
+                line = b"%6s " % pid
+                line += b"%16s " % comm
+                line += b"%20s " % stSysStats.name
+                line += b"%15s " % latency
+                line += b"%15d " % rps
+                line += b"%15d" % stSysStats.total
 
                 color = doc_id % 2 + 1  # alternate color from pair 1 and 2
                 self._printLine(y_index + 1 - self.topLineIdx,
                                 line, False, color)
         self.bottomLineIdx = y_index
-        self.printFooter("z: reset| >/<: sort| +/-: incr/decr sampling rate"
-                         "| UP/Down (%d/%d)  [refresh=%1.1fs]"
+        self.printFooter(b"z: reset| >/<: sort| +/-: incr/decr sampling rate"
+                         b"| UP/Down (%d/%d)  [refresh=%1.1fs]"
                          % (self.topLineIdx,
                             self.bottomLineIdx,
                             self.refreshIntvl))
@@ -704,7 +704,7 @@ def attach_syscall_to_kprobe(b, syscall_list):
             b.attach_kprobe(event=syscall_name, fn_name="do_enter_%s" % fname)
             b.attach_kprobe(event=syscall_name, fn_name="do_return_%s" % fname)
         except KeyboardInterrupt:
-            display.printHeader("Exiting ...")
+            display.printHeader(b"Exiting ...")
             display.reset()
             display.die = True  # will terminate the thread for keyboard
         except Exception:
@@ -740,10 +740,11 @@ def run(display, b, pid_list, comm_list):
                     b["map"].__delitem__(k)
                     zeroed = True
                 if ((k.pid != 0)
-                    and (k.pid in pid_list
-                         or -1 in pid_list)
-                    and (k.comm in comm_list
-                         or "all" in comm_list)):
+                    and
+                        (str(k.pid) in pid_list or "-1" in pid_list)
+                    and
+                        (k.comm.decode() in comm_list or "all" in comm_list)):
+
                     if not k.fname:  # in case of a syscall fname is empty
                         k.fname = syscall_name(k.sysid)  # get fname
                     sc = stSysStats(k.fname, v.counter, v.cumLat)
@@ -761,7 +762,7 @@ def run(display, b, pid_list, comm_list):
         except KeyboardInterrupt:
             break
 
-    display.printHeader("Exiting ...")
+    display.printHeader(b"Exiting ...")
     display.reset()
     display.die = True  # will terminate the thread for keyboard
 
@@ -807,8 +808,6 @@ def main(display):
 
     # get pid list
     pid_list = args.pid.split(",")
-    # turn list of string into list of int
-    pid_list = map(int, pid_list)
 
     # get comm name list
     comm_list = args.comm.split(",")
@@ -820,10 +819,10 @@ def main(display):
     display.setRefreshIntvl(float(args.interval))
     b = create_and_load_bpf(syscall_list, latency)
 
-    if syscall_list[0] != "all":
+    if syscall_list[0] != b"all":
         attach_syscall_to_kprobe(b, syscall_list)
 
-    display.printHeader("Collecting first data ...")
+    display.printHeader(b"Collecting first data ...")
 
     # Create a thread for the keyboard short key
     t = threading.Thread(target=display.readKey)
@@ -839,7 +838,7 @@ if __name__ == "__main__":
         main(display)
         display.die = True  # will terminate the thread for keyboard
     except Exception:
-        display.printHeader("Exiting...")
+        display.printHeader(b"Exiting...")
         display.reset()
         display.die = True  # will terminate the thread for keyboard
         traceback.print_exc()
