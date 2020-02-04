@@ -18,6 +18,7 @@
 import argparse
 import ctypes
 import curses
+import curses.ascii
 import os
 import sys
 import threading
@@ -305,6 +306,8 @@ class TopDisplay:
                             "curSort": True, "sortable": True, "order": -1}
                            ]
         self.reverseOrder = True
+        self.filterOn = False
+        self.commFilter = ''
 
     def _getDisplaySize(self):
         """return getmaxyx from curses.
@@ -381,32 +384,34 @@ class TopDisplay:
                           key=self._sortKey,
                           reverse=self.reverseOrder):
             first = True
-            doc_id += 1
-            for stSysStats in doc.stSysStatsList:
-                y_index += 1
-                if ((y_index < self.topLineIdx) or
-                        (y_index - self.topLineIdx > self.h - 2)):
-                    continue
-                rps = stSysStats.cntPerIntvl / self.refreshIntvl
-                latency = b"%.2f" % float(stSysStats.avgLat / 1000)
+            # Aplly filter if it exists
+            if (self.commFilter.lower()) in doc.comm.lower():
+                doc_id += 1
+                for stSysStats in doc.stSysStatsList:
+                    y_index += 1
+                    if ((y_index < self.topLineIdx) or
+                            (y_index - self.topLineIdx > self.h - 3)):
+                        continue
+                    rps = stSysStats.cntPerIntvl / self.refreshIntvl
+                    latency = b"%.2f" % float(stSysStats.avgLat / 1000)
 
-                if first:
-                    pid = b"%d" % doc.pid
-                    comm = doc.comm
-                    first = False
-                else:
-                    pid = comm = b""
+                    if first:
+                        pid = b"%d" % doc.pid
+                        comm = doc.comm
+                        first = False
+                    else:
+                        pid = comm = b""
 
-                line = b"%6s " % pid
-                line += b"%16s " % comm
-                line += b"%20s " % stSysStats.name
-                line += b"%15s " % latency
-                line += b"%15d " % rps
-                line += b"%15d" % stSysStats.total
+                    line = b"%6s " % pid
+                    line += b"%16s " % comm
+                    line += b"%20s " % stSysStats.name
+                    line += b"%15s " % latency
+                    line += b"%15d " % rps
+                    line += b"%15d" % stSysStats.total
 
-                color = doc_id % 2 + 1  # alternate color from pair 1 and 2
-                self._printLine(y_index + 1 - self.topLineIdx,
-                                line, False, color)
+                    color = doc_id % 2 + 1  # alternate color from pair 1 and 2
+                    self._printLine(y_index + 1 - self.topLineIdx,
+                                    line, False, color)
         self.bottomLineIdx = y_index
         self.printFooter(b"z: reset| >/<: sort| +/-: incr/decr sampling rate"
                          b"| UP/Down (%d/%d)  [refresh=%1.1fs]"
@@ -427,6 +432,7 @@ class TopDisplay:
         """
         while self.die is False:
             try:
+                # timeout is mandatory to terminate this thread when we quit.
                 self.scr.timeout(250)
                 key = self.scr.getch()
                 if key == curses.KEY_UP:
@@ -466,6 +472,9 @@ class TopDisplay:
                 elif key == ord('-'):
                     # decrease sampling rate
                     self._updateRefreshIntvl(-1)
+                elif key == ord('f'):
+                    # filter on comm name
+                    self._setDynamicFilter()
             except KeyboardInterrupt:
                 break
 
@@ -556,6 +565,26 @@ class TopDisplay:
         elif val['order'] == -1:
             self.reverseOrder = True
 
+    def _setDynamicFilter(self):
+        """Configure a filter on comm name (process name).
+        """
+        self.filterOn = True
+        while True:
+            k = self.scr.getch()
+            if k == curses.ascii.ESC:
+                self.commFilter = ''
+                break  # exit filtering mode
+            elif k == curses.ascii.NL:
+                break  # validated
+            else:
+                if k >= 0 and k < 255:
+                    self.commFilter += chr(k)
+                elif k == 263:  # backspace
+                    self.commFilter = self.commFilter[:-1]
+                self.printBody()
+        self.filterOn = False
+        self.printBody()
+
     def _resetCollection(self):
         """Zero counters of the collection. And clear the map
         from the eBPF (TODO).
@@ -624,7 +653,10 @@ class TopDisplay:
             Args:
                 string (str): the string to prints.
         """
-        self._printLine(self.h - 1, string, False, 4)
+        if self.filterOn is True:
+            self._printLine(self.h - 1, "Filter: " + self.commFilter, False, 5)
+        else:
+            self._printLine(self.h - 1, string, False, 4)
 
 
 class timespec(ctypes.Structure):
