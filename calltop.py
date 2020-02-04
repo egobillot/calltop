@@ -430,31 +430,41 @@ class TopDisplay:
                 self.scr.timeout(250)
                 key = self.scr.getch()
                 if key == curses.KEY_UP:
-                    self._move(-1)
-                elif key == 115:  # s
-                    self._move(0, "a")  # go back to first line
-                elif key == 101:  # s
-                    self._move(1e12, "a")  # go back to last line
+                    self._move(-1)  # move up
                 elif key == curses.KEY_DOWN:
+                    # move down
                     self._move(1)
                 elif key == curses.KEY_PPAGE:
+                    # move up
                     self._move(1 - self.h)
                 elif key == curses.KEY_NPAGE:
+                    # move down by one page
                     self._move(self.h - 1)
-                elif key == 122:  # z key
+                elif key == ord('s'):  # s for start
+                    # go back to first line
+                    self._move(0, "a")
+                elif key == ord('e'):  # e for end
+                    # go back to last line
+                    self._move(1e12, "a")
+                elif key == ord('z'):  # z for reset
                     self._resetCollection()
-                elif key == 60 or key == 260:  # < or left key
+                elif key == ord('<') or key == 260:  # < or left key
+                      # sort on left column
                     self._changeSortColumn(-1)
-                elif key == 62 or key == 261:  # > or right key
+                elif key == ord('>') or key == 261:  # > or right key
+                    # sort on right column
                     self._changeSortColumn(1)
-                elif key == 113:  # q key
+                elif key == ord('q'):  # q for quit
                     self.die = True
                     break
-                elif key == 114:  # r key
-                    self._reverseSortOrder()  # reverse sort
-                elif key == 43:  # + key
+                elif key == ord('r'):
+                    # reverse sort
+                    self._reverseSortOrder()
+                elif key == ord('+'):
+                    # increase sampling rate
                     self._updateRefreshIntvl(+1)
-                elif key == 45:  # - key
+                elif key == ord('-'):
+                    # decrease sampling rate
                     self._updateRefreshIntvl(-1)
             except KeyboardInterrupt:
                 break
