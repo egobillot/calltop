@@ -13,11 +13,11 @@ It uses eBPF to trace and report stats on system calls. So far it is limited to 
     - on the function name
     - on PIDs
     - on process names
+ - dynamic filtering
 
 ![alt text](https://github.com/egobillot/calltop/raw/master/calltop.gif "calltop")
 
 ### Feature in the roadmap
- - dynamic filtering
  - use USDT and uprobe to catch function calls
  - batch mode
  - integration with graphing tools
