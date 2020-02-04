@@ -112,6 +112,12 @@ class Doc:
             counters in this doc during the interval.
             stSysStatsList (:obj:`list` of :obj:`stSysStatsList`) : The
             list of stat for each functions/syscall
+            counterRef (:obj:`dict`) : function name is the key, the number of
+            call the value
+            cumLatRef (:obj:`dict`) : function name is the key, cumulated
+            latency the value
+            statTime (:obj:`dict`) : function name is the key, and the value an
+            array [timestamp, intvl].
     """
     def __init__(self, pid, comm):
         self.pid = pid
@@ -120,34 +126,46 @@ class Doc:
         self.sysTotalCntPerIntvl = 0  # the sum of each statSysCall rates
         self.stSysStatsList = []
         # we want to keep the reference counter and cumulated Latency.
-        # when a stat for a function is reset keep the reference in counterRef
+        # when a stat for a function is reset, keep the reference in counterRef
         # and cumLatRef.
-        # This is a dict where key = func name and value the counter
+        # This is a dict where k=funcname and v=counter (from ebpf)
         self.counterRef = {}
-        # This is a dict where key = func name and value the cumulated Latency
+        # This is a dict where k=funcname and v=cumulated Latency (from ebpf)
         self.cumLatRef = {}
+        # This is a dict where k=funcname and v=[timestamp, intvl]
+        # where timestamp is the time of last access, and intvl the interval
+        # between the current insertion and the previous.
+        self.statTime = {}
 
     def __delitem__(self):
         del (self.stSysStatsList)
 
-    def updatestSysStats(self, stSysStats):
+    def updatestSysStats(self, newStat):
         """Update the stat of the doc with this new stat.
         If it does not yet exists, add it to the doc.
         """
         for syscall in self.stSysStatsList:
-            if syscall.name == stSysStats.name:
-                syscall.updateStats(stSysStats,
+            if syscall.name == newStat.name:
+                syscall.updateStats(newStat,
                                     self.counterRef[syscall.name],
                                     self.cumLatRef[syscall.name])
-                self.sysTotalCnt += stSysStats.cntPerIntvl
-                self.sysTotalCntPerIntvl += stSysStats.cntPerIntvl
+                self.sysTotalCnt += newStat.cntPerIntvl
+                self.sysTotalCntPerIntvl += newStat.cntPerIntvl
+                # set timestamp and compute new interval
+                ts = monotonic_time() * 1e-9
+                intvl = ts - self.statTime[newStat.name][0]
+                self.statTime[newStat.name] = [ts, intvl]
                 return
+
         # not already there so add it
-        self.counterRef[stSysStats.name] = 0
-        self.cumLatRef[stSysStats.name] = 0
-        self.stSysStatsList.append(stSysStats)
-        self.sysTotalCnt += stSysStats.cntPerIntvl
-        self.sysTotalCntPerIntvl += stSysStats.cntPerIntvl
+        self.counterRef[newStat.name] = 0
+        self.cumLatRef[newStat.name] = 0
+        self.stSysStatsList.append(newStat)
+        self.sysTotalCnt += newStat.cntPerIntvl
+        self.sysTotalCntPerIntvl += newStat.cntPerIntvl
+        # initial values are the timestamp and 0 for intvl
+        # div by 0 will be manage at the display time
+        self.statTime[newStat.name] = [monotonic_time() * 1e-9, 0]
 
     def keep_previous_count(self, stSysStats):
         """The stats has been deleted. Preciseley counters and cumLat has been
@@ -198,7 +216,7 @@ class stSysStats:
         cumLatPerIntvl (int): cumulated time spent in func during the interval
         total (int): nb of call to function from the begining
         cumLat (int): cumulated time (ns) spent in the func from the begining
-        avgLat (float): cumulated time (ns) spent in the func during the interval
+        avgLat (float): cumulated time (ns) spent in the func during the intvl
         nbSample (int): nb of sample
     """
     def __init__(self, name, cumCount, cumLat):
@@ -387,13 +405,19 @@ class TopDisplay:
             # Aplly filter if it exists
             if (self.commFilter.lower()) in doc.comm.lower():
                 doc_id += 1
-                for stSysStats in doc.stSysStatsList:
+                for stat in doc.stSysStatsList:
                     y_index += 1
                     if ((y_index < self.topLineIdx) or
                             (y_index - self.topLineIdx > self.h - 3)):
                         continue
-                    rps = stSysStats.cntPerIntvl / self.refreshIntvl
-                    latency = b"%.2f" % float(stSysStats.avgLat / 1000)
+                    # Workaround for the very first data of each stats
+                    # int his case intvl == 0, so self.refreshIntvl is used.
+                    # doc.statTime[stat.name][1] is the interval.
+                    if doc.statTime[stat.name][1] == 0:
+                        doc.statTime[stat.name][1] = self.refreshIntvl
+
+                    rps = stSysStats.cntPerIntvl / doc.statTime[stat.name][1]
+                    latency = "%.2f" % float(stSysStats.avgLat / 1000)
 
                     if first:
                         pid = b"%d" % doc.pid
@@ -404,7 +428,7 @@ class TopDisplay:
 
                     line = b"%6s " % pid
                     line += b"%16s " % comm
-                    line += b"%20s " % stSysStats.name
+                    line += b"%20s " % stat.name
                     line += b"%15s " % latency
                     line += b"%15d " % rps
                     line += b"%15d" % stSysStats.total
@@ -455,7 +479,7 @@ class TopDisplay:
                 elif key == ord('z'):  # z for reset
                     self._resetCollection()
                 elif key == ord('<') or key == 260:  # < or left key
-                      # sort on left column
+                    # sort on left column
                     self._changeSortColumn(-1)
                 elif key == ord('>') or key == 261:  # > or right key
                     # sort on right column
