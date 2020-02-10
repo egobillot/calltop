@@ -416,8 +416,8 @@ class TopDisplay:
                     if doc.statTime[stat.name][1] == 0:
                         doc.statTime[stat.name][1] = self.refreshIntvl
 
-                    rps = stSysStats.cntPerIntvl / doc.statTime[stat.name][1]
-                    latency = "%.2f" % float(stSysStats.avgLat / 1000)
+                    rps = stat.cntPerIntvl / doc.statTime[stat.name][1]
+                    latency = "%.2f" % float(stat.avgLat / 1000)
 
                     if first:
                         pid = b"%d" % doc.pid
@@ -431,7 +431,7 @@ class TopDisplay:
                     line += b"%20s " % stat.name
                     line += b"%15s " % latency
                     line += b"%15d " % rps
-                    line += b"%15d" % stSysStats.total
+                    line += b"%15d" % stat.total
 
                     color = doc_id % 2 + 1  # alternate color from pair 1 and 2
                     self._printLine(y_index + 1 - self.topLineIdx,
