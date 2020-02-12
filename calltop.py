@@ -39,15 +39,15 @@ class CtCollection:
     def __init__(self):
         self.doctionary = {}  # doctionary is a dictionary of docs.
 
-    def collection_update(self, newDoc):
+    def collection_update(self, new_doc):
         """Update an existing document in the collection. If the
         document does not exist in the colelction, then add it.
             Args:
-                newDoc (Doc) : A document to be updated
+                new_doc (Doc) : A document to be updated
         """
-        doc = self.lookup_or_create(newDoc.pid, newDoc.comm)
-        for stSysStats in newDoc.stSysStatsList:
-            doc.update_doc_stats(stSysStats)
+        doc = self.lookup_or_create(new_doc.pid, new_doc.comm)
+        for ct_stat in new_doc.ct_stat_list:
+            doc.update_doc_stats(ct_stat)
 
     def lookup_or_create(self, pid, comm):
         """Return the doc with the given pid and comm if it exists,
@@ -78,21 +78,21 @@ class CtCollection:
         self.doctionary.clear()
 
     def write_output(self):
-        strOut = "|"+"=" * 77 + "|\n"
-        strOut += "|%6s" % " pid "
-        strOut += "|%16s" % "process name"
-        strOut += "|%21s" % "function"
-        strOut += "|%15s" % "Rate/s"
-        strOut += "|%15s|\n" % "Total"
-        strOut += "|"+"=" * 77 + "|\n"
+        output = "|"+"=" * 77 + "|\n"
+        output += "|%6s" % " pid "
+        output += "|%16s" % "process name"
+        output += "|%21s" % "function"
+        output += "|%15s" % "Rate/s"
+        output += "|%15s|\n" % "Total"
+        output += "|"+"=" * 77 + "|\n"
         for doc in self.doctionary:
-            strOut += doc.write_output()
+            output += doc.write_output()
 
-        return strOut
+        return output
 
     def reset_info(self):
         for doc in self.doctionary.values():
-            doc.sysTotalCntPerIntvl = 0
+            doc.total_func_cnt_per_intvl = 0
             doc.reset_info()
 
 
@@ -107,130 +107,131 @@ class Doc:
         Attributes:
             pid (int) : The pid
             comm (str) : The process name
-            sysTotalCnt (int) : The sum of each counters in this doc
-            sysTotalCntPerIntvl (int) : The sum of each function call
+            total_func_cnt (int) : The sum of each counters in this doc
+            total_func_cnt_per_intvl (int) : The sum of each function call
             counters in this doc during the interval.
-            stSysStatsList (:obj:`list` of :obj:`stSysStatsList`) : The
+            ct_stat_list (:obj:`list` of :obj:`ct_stat_list`) : The
             list of stat for each functions/syscall
-            counterRef (:obj:`dict`) : function name is the key, the number of
+            counter_ref (:obj:`dict`) : function name is the key, the number of
             call the value
-            cumLatRef (:obj:`dict`) : function name is the key, cumulated
+            cum_lat_ref (:obj:`dict`) : function name is the key, cumulated
             latency the value
-            statTime (:obj:`dict`) : function name is the key, and the value an
-            array [timestamp, intvl].
+            stat_time (:obj:`dict`) : It stores the informtion useful to
+            compute with precision the call rate. This is a dictionary where
+            function name is the key, and the value an array [timestamp, intvl]
     """
     def __init__(self, pid, comm):
         self.pid = pid
         self.comm = comm
-        self.sysTotalCnt = 0  # the sum of each statSysCall count in this doc
-        self.sysTotalCntPerIntvl = 0  # the sum of each statSysCall rates
-        self.stSysStatsList = []
+        self.total_func_cnt = 0  # the sum of each func call count in this doc
+        self.total_func_cnt_per_intvl = 0  # the sum of each func call rates
+        self.ct_stat_list = []
         # we want to keep the reference counter and cumulated Latency.
-        # when a stat for a function is reset, keep the reference in counterRef
-        # and cumLatRef.
+        # when a stat for a function is reset, keep the reference in
+        # counter_ref and cum_lat_ref.
         # This is a dict where k=funcname and v=counter (from ebpf)
-        self.counterRef = {}
+        self.counter_ref = {}
         # This is a dict where k=funcname and v=cumulated Latency (from ebpf)
-        self.cumLatRef = {}
+        self.cum_lat_ref = {}
         # This is a dict where k=funcname and v=[timestamp, intvl]
         # where timestamp is the time of last access, and intvl the interval
         # between the current insertion and the previous.
-        self.statTime = {}
+        self.stat_time = {}
 
     def __delitem__(self):
-        del (self.stSysStatsList)
+        del (self.ct_stat_list)
 
-    def update_doc_stats(self, newStat):
+    def update_doc_stats(self, new_stat):
         """Update the stat of the doc with this new stat.
         If it does not yet exists, add it to the doc.
         """
-        for syscall in self.stSysStatsList:
-            if syscall.name == newStat.name:
-                syscall.update_stats(newStat,
-                                     self.counterRef[syscall.name],
-                                     self.cumLatRef[syscall.name])
-                self.sysTotalCnt += newStat.cntPerIntvl
-                self.sysTotalCntPerIntvl += newStat.cntPerIntvl
+        for func_call in self.ct_stat_list:
+            if func_call.name == new_stat.name:
+                func_call.update_stats(new_stat,
+                                       self.counter_ref[func_call.name],
+                                       self.cum_lat_ref[func_call.name])
+                self.total_func_cnt += new_stat.cnt_per_intvl
+                self.total_func_cnt_per_intvl += new_stat.cnt_per_intvl
                 # set timestamp and compute new interval
                 ts = monotonic_time() * 1e-9
-                intvl = ts - self.statTime[newStat.name][0]
-                self.statTime[newStat.name] = [ts, intvl]
+                intvl = ts - self.stat_time[new_stat.name][0]
+                self.stat_time[new_stat.name] = [ts, intvl]
                 return
 
         # not already there so add it
-        self.counterRef[newStat.name] = 0
-        self.cumLatRef[newStat.name] = 0
-        self.stSysStatsList.append(newStat)
-        self.sysTotalCnt += newStat.cntPerIntvl
-        self.sysTotalCntPerIntvl += newStat.cntPerIntvl
+        self.counter_ref[new_stat.name] = 0
+        self.cum_lat_ref[new_stat.name] = 0
+        self.ct_stat_list.append(new_stat)
+        self.total_func_cnt += new_stat.cnt_per_intvl
+        self.total_func_cnt_per_intvl += new_stat.cnt_per_intvl
         # initial values are the timestamp and 0 for intvl
         # div by 0 will be manage at the display time
-        self.statTime[newStat.name] = [monotonic_time() * 1e-9, 0]
+        self.stat_time[new_stat.name] = [monotonic_time() * 1e-9, 0]
 
-    def keep_previous_count(self, stSysStats):
-        """The stats has been deleted. Preciseley counters and cumLat has been
+    def keep_previous_count(self, ct_stat):
+        """The stats has been deleted. Preciseley counters and cum_lat has been
         clear/delitem from the eBPF map. In order to keep consistent infos, we
         need to save the previous values : the references.
             Args:
-                stSysStats : (stSysStats) The stat that has been reset
+                ct_stat : (ctStats) The stat that has been reset
         """
-        self.counterRef[stSysStats.name] += stSysStats.total
-        self.cumLatRef[stSysStats.name] += stSysStats.cumLat
+        self.counter_ref[ct_stat.name] += ct_stat.total
+        self.cum_lat_ref[ct_stat.name] += ct_stat.cum_lat
 
     def write_output(self):
-        strOut = ""
+        output = ""
         first = True
-        for stSysStats in self.stSysStatsList:
+        for ct_stat in self.ct_stat_list:
             if first:
-                strOut += "|%6s" % self.pid,
-                strOut += "|%16s" % self.comm,
-                strOut += "| %20s" % stSysStats.name,
-                strOut += "|%15d" % stSysStats.avgLat,
-                strOut += "|%15d" % stSysStats.cntPerIntvl,
-                strOut += "|%15d|\n" % stSysStats.total
+                output += "|%6s" % self.pid,
+                output += "|%16s" % self.comm,
+                output += "| %20s" % ct_stat.name,
+                output += "|%15d" % ct_stat.avg_lat,
+                output += "|%15d" % ct_stat.cnt_per_intvl,
+                output += "|%15d|\n" % ct_stat.total
 
                 first = False
             else:
-                strOut += "|%6s" % " ",
-                strOut += "|%16s" % " ",
-                strOut += "|%21s" % stSysStats.name,
-                strOut += "|%15d" % stSysStats.avgLat,
-                strOut += "|%15d" % stSysStats.cntPerIntvl,
-                strOut += "|%15d|\n" % stSysStats.total
+                output += "|%6s" % " ",
+                output += "|%16s" % " ",
+                output += "|%21s" % ct_stat.name,
+                output += "|%15d" % ct_stat.avg_lat,
+                output += "|%15d" % ct_stat.cnt_per_intvl,
+                output += "|%15d|\n" % ct_stat.total
 
-        strOut += "|"+"=" * 77 + "|\n"
-        return strOut
+        output += "|"+"=" * 77 + "|\n"
+        return output
 
     def reset_info(self):
-        for stSysStats in self.stSysStatsList:
-            stSysStats.reset_info()
+        for ct_stat in self.ct_stat_list:
+            ct_stat.reset_info()
 
 
-class stSysStats:
-    """stSysStats is used to get latency or call counters for a given
+class ctStats:
+    """ctStats is used to get latency or call counters for a given
     function call.
 
     Attributes:
         name (str): Name of the function traced
-        cntPerIntvl (int): nb of call to function during the interval
-        cumLatPerIntvl (int): cumulated time spent in func during the interval
+        cnt_per_intvl (int): nb of call to function during the interval
+        cum_lat_per_intvl (int): cumulated time spent in func during the intvl
         total (int): nb of call to function from the begining
-        cumLat (int): cumulated time (ns) spent in the func from the begining
-        avgLat (float): cumulated time (ns) spent in the func during the intvl
-        nbSample (int): nb of sample
+        cum_lat (int): cumulated time (ns) spent in the func from the begining
+        avg_lat (float): cumulated time (ns) spent in the func during the intvl
+        nb_sample (int): nb of sample
     """
-    def __init__(self, name, cumCount, cumLat):
+    def __init__(self, name, cum_count, cum_lat):
         self.name = name
-        self.cntPerIntvl = cumCount  # count during the interval
-        self.cumLatPerIntvl = cumLat  # sum of lat during interval
-        self.total = cumCount  # total over time (keep increasing)
-        self.cumLat = cumLat
-        self.avgLat = float(cumLat / cumCount)  # avg latency during intvl.
-        self.nbSample = 1  # first sample
+        self.cnt_per_intvl = cum_count  # count during the interval
+        self.cum_lat_per_intvl = cum_lat  # sum of lat during interval
+        self.total = cum_count  # total over time (keep increasing)
+        self.cum_lat = cum_lat
+        self.avg_lat = float(cum_lat / cum_count)  # avg latency during intvl.
+        self.nb_sample = 1  # first sample
 
-    def update_stats(self, sysStat, counterRef, cumLatRef):
-        """Update the information of a stSysStats. It mainly manage the case
-        where the counter and cumLat from the eBPF has been cleared. In this
+    def update_stats(self, stat, counter_ref, cum_lat_ref):
+        """Update the information of a ctStats. It mainly manage the case
+        where the counter and cum_lat from the eBPF has been cleared. In this
         we keep the previous value (called a reference), in order not to loose
         the real value. Why don't we cleared the map from eBPF after each
         access ? Because map.clear or map.__delitem(key) are not atomic. And
@@ -242,54 +243,54 @@ class stSysStats:
         are accurate.
 
         Args:
-            sysStat (stSysStats): Update the current stats with value from
-            sysStat args.
-            counterRef (int): Use this value as the previous reference
+            stat (ctStats): Update the current stats with value from
+            stat args.
+            counter_ref (int): Use this value as the previous reference
             for counter before clear
-            cumLatRef (int):  Use this value as the previous reference
+            cum_lat_ref (int):  Use this value as the previous reference
             for cumulated latency before clear
         """
         # BUG : when this stats has been zeroed and
-        # if self.total == sysStat.total ( old value is == new value)
+        # if self.total == stat.total ( old value is == new value)
         # then nothing will be added. And in that specific case it should
         # should not happen so often, but need to fixe it.
-        if int(self.total) == int(sysStat.total):
+        if int(self.total) == int(stat.total):
             return  # counter have not been updated
 
         # count per interval = new count - old  count
-        self.cntPerIntvl = sysStat.total - self.total + counterRef
+        self.cnt_per_intvl = stat.total - self.total + counter_ref
 
         # time spent per interval
-        self.cumLatPerIntvl = sysStat.cumLat - self.cumLat + cumLatRef
+        self.cum_lat_per_intvl = stat.cum_lat - self.cum_lat + cum_lat_ref
 
         # update the Total with the one give by eBPF counter
-        self.total = counterRef + sysStat.total
+        self.total = counter_ref + stat.total
 
         # update the cumulated Latency
-        self.cumLat = cumLatRef + sysStat.cumLat
+        self.cum_lat = cum_lat_ref + stat.cum_lat
 
         # compute the avg latency
-        if self.cntPerIntvl == 0:
-            self.avgLat = 0
+        if self.cnt_per_intvl == 0:
+            self.avg_lat = 0
         else:
-            self.avgLat = float(self.cumLatPerIntvl / self.cntPerIntvl)
+            self.avg_lat = float(self.cum_lat_per_intvl / self.cnt_per_intvl)
 
         # increment sample count
-        self.nbSample += 1
+        self.nb_sample += 1
 
     def write_output(self):
-        strOut += "[%16s]" % self.name,
-        strOut += "latInt=%8.2f" % self.avgLat,
-        strOut += "cntInt=%8d" % self.cntPerIntvl,
-        strOut += "Total=%8d" % self.total,
-        strOut += "sample=%8d" % self.nbSample
-        return strOut
+        output += "[%16s]" % self.name,
+        output += "latInt=%8.2f" % self.avg_lat,
+        output += "cntInt=%8d" % self.cnt_per_intvl,
+        output += "Total=%8d" % self.total,
+        output += "sample=%8d" % self.nb_sample
+        return output
 
     def reset_info(self):
         """
         set count to 0
         """
-        self.cntPerIntvl = 0
+        self.cnt_per_intvl = 0
 
 
 def debug(filename, s,):
@@ -303,29 +304,29 @@ class TopDisplay:
         self.h = 0
         self.w = 0
         self.scr = None
-        self.topLineIdx = 0
-        self.bottomLineIdx = 0
+        self.top_line_idx = 0
+        self.bottom_line_idx = 0
         self._init_display()
         self.collection = ctCollection
         self.die = False
-        self.refreshIntvl = 1
+        self.refresh_intvl = 1
         # {columnName, id, current Sort, sortable, sortOrder}
-        self.sortColumn = [{"name": "%6s" % "PID", "id": "pid",
-                            "curSort": False, "sortable": True, "order": 1},
-                           {"name": "%17s" % "PROCESS NAME", "id": "process",
-                            "curSort": False, "sortable": True, "order": 1},
-                           {"name": "%21s" % "FUNC NAME", "id": "fname",
-                            "curSort": False, "sortable": False, "order": 1},
-                           {"name": "%16s" % "latency(us)", "id": "rate",
-                            "curSort": False, "sortable": False, "order": -1},
-                           {"name": "%16s" % "call/s", "id": "rate",
-                            "curSort": False, "sortable": True, "order": -1},
-                           {"name": "%16s" % "TOTAL", "id": "total",
-                            "curSort": True, "sortable": True, "order": -1}
-                           ]
-        self.reverseOrder = True
-        self.filterOn = False
-        self.commFilter = ''
+        self.sort_column = [{"name": "%6s" % "PID", "id": "pid",
+                             "curSort": False, "sortable": True, "order": 1},
+                            {"name": "%17s" % "PROCESS NAME", "id": "process",
+                             "curSort": False, "sortable": True, "order": 1},
+                            {"name": "%21s" % "FUNC NAME", "id": "fname",
+                             "curSort": False, "sortable": False, "order": 1},
+                            {"name": "%16s" % "latency(us)", "id": "rate",
+                             "curSort": False, "sortable": False, "order": -1},
+                            {"name": "%16s" % "call/s", "id": "rate",
+                             "curSort": False, "sortable": True, "order": -1},
+                            {"name": "%16s" % "TOTAL", "id": "total",
+                             "curSort": True, "sortable": True, "order": -1}
+                            ]
+        self.reverse_order = True
+        self.filter_on = False
+        self.comm_filter = ''
 
     def _get_display_size(self):
         """return getmaxyx from curses.
@@ -336,12 +337,12 @@ class TopDisplay:
         return self.scr.getmaxyx()
 
     def set_refresh_intvl(self, rate):
-        """Set refreshIntvl.
+        """Set refresh_intvl.
 
             Args:
                 rate(int) : the rate.
         """
-        self.refreshIntvl = rate
+        self.refresh_intvl = rate
 
     def _update_efresh_intvl(self, direction):
         """Increase or decrease the refresh rate.
@@ -355,14 +356,14 @@ class TopDisplay:
                 changes is done by 0.1.
         """
         if abs(direction) == 1:
-            if self.refreshIntvl == 1 and direction == 1:
-                self.refreshIntvl = 2
-            elif self.refreshIntvl > 1:
-                self.refreshIntvl = int(self.refreshIntvl) + 1 * direction
+            if self.refresh_intvl == 1 and direction == 1:
+                self.refresh_intvl = 2
+            elif self.refresh_intvl > 1:
+                self.refresh_intvl = int(self.refresh_intvl) + 1 * direction
             else:
-                self.refreshIntvl += 1 * direction * 0.1
+                self.refresh_intvl += 1 * direction * 0.1
 
-            self.refreshIntvl = max(self.refreshIntvl, 0.1)
+            self.refresh_intvl = max(self.refresh_intvl, 0.1)
 
     def _init_display(self):
         """Init of the curses display. Prepare also 4 pairs of
@@ -400,24 +401,24 @@ class TopDisplay:
         doc_id = 0
         for doc in sorted(self.collection.doctionary.values(),
                           key=self._sort_key,
-                          reverse=self.reverseOrder):
+                          reverse=self.reverse_order):
             first = True
             # Aplly filter if it exists
-            if (self.commFilter.lower()) in doc.comm.lower():
+            if (self.comm_filter.lower()) in doc.comm.lower():
                 doc_id += 1
-                for stat in doc.stSysStatsList:
+                for stat in doc.ct_stat_list:
                     y_index += 1
-                    if ((y_index < self.topLineIdx) or
-                            (y_index - self.topLineIdx > self.h - 3)):
+                    if ((y_index < self.top_line_idx) or
+                            (y_index - self.top_line_idx > self.h - 3)):
                         continue
                     # Workaround for the very first data of each stats
-                    # int his case intvl == 0, so self.refreshIntvl is used.
-                    # doc.statTime[stat.name][1] is the interval.
-                    if doc.statTime[stat.name][1] == 0:
-                        doc.statTime[stat.name][1] = self.refreshIntvl
+                    # int his case intvl == 0, so self.refresh_intvl is used.
+                    # doc.stat_time[stat.name][1] is the interval.
+                    if doc.stat_time[stat.name][1] == 0:
+                        doc.stat_time[stat.name][1] = self.refresh_intvl
 
-                    rps = stat.cntPerIntvl / doc.statTime[stat.name][1]
-                    latency = "%.2f" % float(stat.avgLat / 1000)
+                    rps = stat.cnt_per_intvl / doc.stat_time[stat.name][1]
+                    latency = "%.2f" % float(stat.avg_lat / 1000)
 
                     if first:
                         pid = b"%d" % doc.pid
@@ -434,14 +435,14 @@ class TopDisplay:
                     line += b"%15d" % stat.total
 
                     color = doc_id % 2 + 1  # alternate color from pair 1 and 2
-                    self._print_line(y_index + 1 - self.topLineIdx,
+                    self._print_line(y_index + 1 - self.top_line_idx,
                                      line, False, color)
-        self.bottomLineIdx = y_index
+        self.bottom_line_idx = y_index
         self.print_footer(b"z: reset| >/<: sort| +/-: incr/decr sampling rate"
                           b"| UP/Down (%d/%d)  [refresh=%1.1fs]"
-                          % (self.topLineIdx,
-                             self.bottomLineIdx,
-                             self.refreshIntvl))
+                          % (self.top_line_idx,
+                             self.bottom_line_idx,
+                             self.refresh_intvl))
         self.scr.refresh()
 
     def read_key(self):
@@ -513,11 +514,11 @@ class TopDisplay:
         """
 
         if mode == "r":
-            self.topLineIdx = max(self.topLineIdx + y, 0)
-            self.topLineIdx = min(self.topLineIdx, self.bottomLineIdx)
+            self.top_line_idx = max(self.top_line_idx + y, 0)
+            self.top_line_idx = min(self.top_line_idx, self.bottom_line_idx)
         elif mode == "a":
-            self.topLineIdx = max(y, 0)
-            self.topLineIdx = min(y, self.bottomLineIdx)
+            self.top_line_idx = max(y, 0)
+            self.top_line_idx = min(y, self.bottom_line_idx)
         else:
             return
 
@@ -533,45 +534,45 @@ class TopDisplay:
             Returns:
                 The value on wich to make the sort order
         """
-        for idx, val in enumerate(self.sortColumn):
+        for idx, val in enumerate(self.sort_column):
             if val['curSort'] is True:
                 if val['id'] == "pid":
                     return doc.pid
                 elif val['id'] == "process":
                     return doc.comm.lower()
                 elif val['id'] == "rate":
-                    return doc.sysTotalCntPerIntvl
+                    return doc.total_func_cnt_per_intvl
                 elif val['id'] == "total":
-                    return doc.sysTotalCnt
+                    return doc.total_func_cnt
 
     def _reverse_sort_order(self):
-        """Reverse the sort order. Takes the sortColumn attribute,
+        """Reverse the sort order. Takes the sort_column attribute,
         look for the current sort column and reverse its order value
-        (-1 or +1). Finally set the reverseOrder boolean attribute used
+        (-1 or +1). Finally set the reverse_order boolean attribute used
         by the sorted function.
         """
-        for idx, val in enumerate(self.sortColumn):
+        for idx, val in enumerate(self.sort_column):
             if val['curSort'] is True:
                 val['order'] = -1 * val['order']
                 if val['order'] == 1:
-                    self.reverseOrder = False
+                    self.reverse_order = False
                 elif val['order'] == -1:
-                    self.reverseOrder = True
+                    self.reverse_order = True
                 break
 
     def _change_sort_column(self, shift):
         """Change the column on wich we do the sort. Used to
         set the current column on wich we do the sort. Set also
-        the reverseOrder attribute accordingly.
+        the reverse_order attribute accordingly.
 
             Args :
                 shift (int): 1 means we use the next right column
                 to do the sort. -1 means it is the left one.
         """
         if shift == 1:  # shift right
-            lst = self.sortColumn
+            lst = self.sort_column
         elif shift == -1:  # shift left
-            lst = reversed(self.sortColumn)
+            lst = reversed(self.sort_column)
         foundCurrent = False
         for i, val in enumerate(lst, 1):
             if foundCurrent is False and val['curSort'] is True:
@@ -585,28 +586,28 @@ class TopDisplay:
                 break
         # Order according to the saved value
         if val['order'] == 1:
-            self.reverseOrder = False
+            self.reverse_order = False
         elif val['order'] == -1:
-            self.reverseOrder = True
+            self.reverse_order = True
 
     def _set_dynamic_filter(self):
         """Configure a filter on comm name (process name).
         """
-        self.filterOn = True
+        self.filter_on = True
         while True:
             k = self.scr.getch()
             if k == curses.ascii.ESC:
-                self.commFilter = ''
+                self.comm_filter = ''
                 break  # exit filtering mode
             elif k == curses.ascii.NL:
                 break  # validated
             else:
                 if k >= 0 and k < 255:
-                    self.commFilter += chr(k)
+                    self.comm_filter += chr(k)
                 elif k == 263:  # backspace
-                    self.commFilter = self.commFilter[:-1]
+                    self.comm_filter = self.comm_filter[:-1]
                 self.print_body()
-        self.filterOn = False
+        self.filter_on = False
         self.print_body()
 
     def _reset_collection(self):
@@ -616,7 +617,7 @@ class TopDisplay:
         TODO need also to clear the b["map"]
         """
         self.collection.drop()
-        self.topLineIdx = 0
+        self.top_line_idx = 0
         self.print_body()
 
     def reset(self):
@@ -654,7 +655,7 @@ class TopDisplay:
         opt_selected = curses.color_pair(5)
 
         w_index = 0
-        for val in self.sortColumn:
+        for val in self.sort_column:
             color = opt  # set color to opt
             if val['curSort'] is True:  # This is the column used by sort
                 color = opt_selected  # set color to white/red
@@ -677,8 +678,11 @@ class TopDisplay:
             Args:
                 string (str): the string to print.
         """
-        if self.filterOn is True:
-            self._print_line(self.h - 1, "Filter: " + self.commFilter, False, 5)
+        if self.filter_on is True:
+            self._print_line(self.h - 1,
+                             "Filter: " + self.comm_filter,
+                             False,
+                             5)
         else:
             self._print_line(self.h - 1, string, False, 4)
 
@@ -793,7 +797,7 @@ def run(display, b, pid_list, comm_list):
 
     while display.die is False:
         try:
-            sleep(display.refreshIntvl)
+            sleep(display.refresh_intvl)
             now = monotonic_time()
             for k, v in b["map"].items():
                 # map.clear() or item.__delitem__() are not thread safe !!
@@ -813,7 +817,7 @@ def run(display, b, pid_list, comm_list):
 
                     if not k.fname:  # in case of a syscall fname is empty
                         k.fname = syscall_name(k.sysid)  # get fname
-                    sc = stSysStats(k.fname, v.counter, v.cumLat)
+                    sc = ctStats(k.fname, v.counter, v.cumLat)
                     # lookup the doc in the collection. If it does not exists
                     # then create it.
                     doc = display.collection.lookup_or_create(k.pid, k.comm)
