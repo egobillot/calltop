@@ -47,7 +47,7 @@ class CtCollection:
         """
         doc = self.lookup_or_create(newDoc.pid, newDoc.comm)
         for stSysStats in newDoc.stSysStatsList:
-            doc.updatestSysStats(stSysStats)
+            doc.update_doc_stats(stSysStats)
 
     def lookup_or_create(self, pid, comm):
         """Return the doc with the given pid and comm if it exists,
@@ -77,7 +77,7 @@ class CtCollection:
             del doc
         self.collection.clear()
 
-    def writeOutput(self):
+    def write_output(self):
         strOut = "|"+"=" * 77 + "|\n"
         strOut += "|%6s" % " pid "
         strOut += "|%16s" % "process name"
@@ -86,14 +86,14 @@ class CtCollection:
         strOut += "|%15s|\n" % "Total"
         strOut += "|"+"=" * 77 + "|\n"
         for doc in self.collection:
-            strOut += doc.writeOutput()
+            strOut += doc.write_output()
 
         return strOut
 
-    def resetInfo(self):
+    def reset_info(self):
         for doc in self.collection.values():
             doc.sysTotalCntPerIntvl = 0
-            doc.resetInfo()
+            doc.reset_info()
 
 
 class Doc:
@@ -140,15 +140,15 @@ class Doc:
     def __delitem__(self):
         del (self.stSysStatsList)
 
-    def updatestSysStats(self, newStat):
+    def update_doc_stats(self, newStat):
         """Update the stat of the doc with this new stat.
         If it does not yet exists, add it to the doc.
         """
         for syscall in self.stSysStatsList:
             if syscall.name == newStat.name:
-                syscall.updateStats(newStat,
-                                    self.counterRef[syscall.name],
-                                    self.cumLatRef[syscall.name])
+                syscall.update_stats(newStat,
+                                     self.counterRef[syscall.name],
+                                     self.cumLatRef[syscall.name])
                 self.sysTotalCnt += newStat.cntPerIntvl
                 self.sysTotalCntPerIntvl += newStat.cntPerIntvl
                 # set timestamp and compute new interval
@@ -177,7 +177,7 @@ class Doc:
         self.counterRef[stSysStats.name] += stSysStats.total
         self.cumLatRef[stSysStats.name] += stSysStats.cumLat
 
-    def writeOutput(self):
+    def write_output(self):
         strOut = ""
         first = True
         for stSysStats in self.stSysStatsList:
@@ -201,9 +201,9 @@ class Doc:
         strOut += "|"+"=" * 77 + "|\n"
         return strOut
 
-    def resetInfo(self):
+    def reset_info(self):
         for stSysStats in self.stSysStatsList:
-            stSysStats.resetInfo()
+            stSysStats.reset_info()
 
 
 class stSysStats:
@@ -228,7 +228,7 @@ class stSysStats:
         self.avgLat = float(cumLat / cumCount)  # avg latency during intvl.
         self.nbSample = 1  # first sample
 
-    def updateStats(self, sysStat, counterRef, cumLatRef):
+    def update_stats(self, sysStat, counterRef, cumLatRef):
         """Update the information of a stSysStats. It mainly manage the case
         where the counter and cumLat from the eBPF has been cleared. In this
         we keep the previous value (called a reference), in order not to loose
@@ -277,7 +277,7 @@ class stSysStats:
         # increment sample count
         self.nbSample += 1
 
-    def writeOutput(self):
+    def write_output(self):
         strOut += "[%16s]" % self.name,
         strOut += "latInt=%8.2f" % self.avgLat,
         strOut += "cntInt=%8d" % self.cntPerIntvl,
@@ -285,7 +285,7 @@ class stSysStats:
         strOut += "sample=%8d" % self.nbSample
         return strOut
 
-    def resetInfo(self):
+    def reset_info(self):
         """
         set count to 0
         """
@@ -299,14 +299,14 @@ def debug(filename, s,):
 
 class TopDisplay:
 
-    def __init__(self, stCollection):
+    def __init__(self, ctCollection):
         self.h = 0
         self.w = 0
         self.scr = None
         self.topLineIdx = 0
         self.bottomLineIdx = 0
-        self._initDisplay()
-        self.collection = stCollection
+        self._init_display()
+        self.collection = ctCollection
         self.die = False
         self.refreshIntvl = 1
         # {columnName, id, current Sort, sortable, sortOrder}
@@ -327,7 +327,7 @@ class TopDisplay:
         self.filterOn = False
         self.commFilter = ''
 
-    def _getDisplaySize(self):
+    def _get_display_size(self):
         """return getmaxyx from curses.
 
             Returns:
@@ -335,7 +335,7 @@ class TopDisplay:
         """
         return self.scr.getmaxyx()
 
-    def setRefreshIntvl(self, rate):
+    def set_refresh_intvl(self, rate):
         """Set refreshIntvl.
 
             Args:
@@ -343,7 +343,7 @@ class TopDisplay:
         """
         self.refreshIntvl = rate
 
-    def _updateRefreshIntvl(self, direction):
+    def _update_efresh_intvl(self, direction):
         """Increase or decrease the refresh rate.
 
             Args:
@@ -364,7 +364,7 @@ class TopDisplay:
 
             self.refreshIntvl = max(self.refreshIntvl, 0.1)
 
-    def _initDisplay(self):
+    def _init_display(self):
         """Init of the curses display. Prepare also 4 pairs of
         colors : text colors, background colors.
         """
@@ -373,7 +373,7 @@ class TopDisplay:
         curses.cbreak()
         self.scr.keypad(True)
         self.scr.clear()
-        self.w, self.h = self._getDisplaySize()
+        self.w, self.h = self._get_display_size()
         curses.start_color()
         if curses.COLORS < 256:
             # there is 0 shades of Grey !!
@@ -389,17 +389,17 @@ class TopDisplay:
         curses.init_pair(4, curses.COLOR_RED, curses.COLOR_WHITE)
         curses.init_pair(5, curses.COLOR_WHITE, curses.COLOR_RED)
 
-    def printBody(self):
+    def print_body(self):
         """Print the data in a top like manner. Loops over all the
         collection and print stats related to pid/process/funcname.
         """
-        self.h, self.w = self._getDisplaySize()
+        self.h, self.w = self._get_display_size()
         self.scr.clear()
-        self._printTabHeader()
+        self._print_tab_header()
         y_index = -1
         doc_id = 0
         for doc in sorted(self.collection.collection.values(),
-                          key=self._sortKey,
+                          key=self._sort_key,
                           reverse=self.reverseOrder):
             first = True
             # Aplly filter if it exists
@@ -434,17 +434,17 @@ class TopDisplay:
                     line += b"%15d" % stat.total
 
                     color = doc_id % 2 + 1  # alternate color from pair 1 and 2
-                    self._printLine(y_index + 1 - self.topLineIdx,
-                                    line, False, color)
+                    self._print_line(y_index + 1 - self.topLineIdx,
+                                     line, False, color)
         self.bottomLineIdx = y_index
-        self.printFooter(b"z: reset| >/<: sort| +/-: incr/decr sampling rate"
-                         b"| UP/Down (%d/%d)  [refresh=%1.1fs]"
-                         % (self.topLineIdx,
-                            self.bottomLineIdx,
-                            self.refreshIntvl))
+        self.print_footer(b"z: reset| >/<: sort| +/-: incr/decr sampling rate"
+                          b"| UP/Down (%d/%d)  [refresh=%1.1fs]"
+                          % (self.topLineIdx,
+                             self.bottomLineIdx,
+                             self.refreshIntvl))
         self.scr.refresh()
 
-    def readKey(self):
+    def read_key(self):
         """Catches keys pressed, and associates an action for each key.
         - key up/down scroll page by 1 line up or down
         - page up/down scroll page by 1 page up or down
@@ -477,28 +477,28 @@ class TopDisplay:
                     # go back to last line
                     self._move(1e12, "a")
                 elif key == ord('z'):  # z for reset
-                    self._resetCollection()
+                    self._reset_collection()
                 elif key == ord('<') or key == 260:  # < or left key
                     # sort on left column
-                    self._changeSortColumn(-1)
+                    self._change_sort_column(-1)
                 elif key == ord('>') or key == 261:  # > or right key
                     # sort on right column
-                    self._changeSortColumn(1)
+                    self._change_sort_column(1)
                 elif key == ord('q'):  # q for quit
                     self.die = True
                     break
                 elif key == ord('r'):
                     # reverse sort
-                    self._reverseSortOrder()
+                    self._reverse_sort_order()
                 elif key == ord('+'):
                     # increase sampling rate
-                    self._updateRefreshIntvl(+1)
+                    self._update_efresh_intvl(+1)
                 elif key == ord('-'):
                     # decrease sampling rate
-                    self._updateRefreshIntvl(-1)
+                    self._update_efresh_intvl(-1)
                 elif key == ord('f'):
                     # filter on comm name
-                    self._setDynamicFilter()
+                    self._set_dynamic_filter()
             except KeyboardInterrupt:
                 break
 
@@ -522,9 +522,9 @@ class TopDisplay:
             return
 
         self.scr.erase()
-        self.printBody()
+        self.print_body()
 
-    def _sortKey(self, doc):
+    def _sort_key(self, doc):
         """Customize the sort order for 'sorted' python function.
 
             Args:
@@ -544,7 +544,7 @@ class TopDisplay:
                 elif val['id'] == "total":
                     return doc.sysTotalCnt
 
-    def _reverseSortOrder(self):
+    def _reverse_sort_order(self):
         """Reverse the sort order. Takes the sortColumn attribute,
         look for the current sort column and reverse its order value
         (-1 or +1). Finally set the reverseOrder boolean attribute used
@@ -559,7 +559,7 @@ class TopDisplay:
                     self.reverseOrder = True
                 break
 
-    def _changeSortColumn(self, shift):
+    def _change_sort_column(self, shift):
         """Change the column on wich we do the sort. Used to
         set the current column on wich we do the sort. Set also
         the reverseOrder attribute accordingly.
@@ -589,7 +589,7 @@ class TopDisplay:
         elif val['order'] == -1:
             self.reverseOrder = True
 
-    def _setDynamicFilter(self):
+    def _set_dynamic_filter(self):
         """Configure a filter on comm name (process name).
         """
         self.filterOn = True
@@ -605,11 +605,11 @@ class TopDisplay:
                     self.commFilter += chr(k)
                 elif k == 263:  # backspace
                     self.commFilter = self.commFilter[:-1]
-                self.printBody()
+                self.print_body()
         self.filterOn = False
-        self.printBody()
+        self.print_body()
 
-    def _resetCollection(self):
+    def _reset_collection(self):
         """Zero counters of the collection. And clear the map
         from the eBPF (TODO).
 
@@ -617,7 +617,7 @@ class TopDisplay:
         """
         self.collection.drop()
         self.topLineIdx = 0
-        self.printBody()
+        self.print_body()
 
     def reset(self):
         """Reset the curses screen.
@@ -627,7 +627,7 @@ class TopDisplay:
         curses.echo()
         curses.endwin()
 
-    def _printLine(self, y, line, highlight, colorpair):
+    def _print_line(self, y, line, highlight, colorpair):
         """Print a line at a given position with color option.
 
             Args:
@@ -647,7 +647,7 @@ class TopDisplay:
         self.scr.addstr(y, 0, line[:self.w - 1], option)
         # self.scr.clrtoeol()
 
-    def _printTabHeader(self):
+    def _print_tab_header(self):
         """Create and print the top Header.
         """
         opt = curses.color_pair(3)
@@ -663,27 +663,27 @@ class TopDisplay:
             self.scr.addstr(0, w_index, val['name'], color)
             w_index += len(val['name'])
 
-    def printHeader(self, string):
-        """Prints string in the header. header's height = 1 row.
+    def print_header(self, string):
+        """Prints string at the first line. header's height = 1 row.
 
             Args:
-                string (str): the string to prints.
+                string (str): the string to print.
         """
-        self._printLine(0, string, False, 3)
+        self._print_line(0, string, False, 3)
 
-    def printFooter(self, string):
+    def print_footer(self, string):
         """Prints string in the footer. footer's height = 1 row
 
             Args:
-                string (str): the string to prints.
+                string (str): the string to print.
         """
         if self.filterOn is True:
-            self._printLine(self.h - 1, "Filter: " + self.commFilter, False, 5)
+            self._print_line(self.h - 1, "Filter: " + self.commFilter, False, 5)
         else:
-            self._printLine(self.h - 1, string, False, 4)
+            self._print_line(self.h - 1, string, False, 4)
 
 
-class timespec(ctypes.Structure):
+class TimeSpec(ctypes.Structure):
     _fields_ = [
         ('tv_sec', ctypes.c_long),
         ('tv_nsec', ctypes.c_long)
@@ -701,9 +701,9 @@ def monotonic_time():
 
     librt = ctypes.CDLL('librt.so.1', use_errno=True)
     clock_gettime = librt.clock_gettime
-    clock_gettime.argtypes = [ctypes.c_int, ctypes.POINTER(timespec)]
+    clock_gettime.argtypes = [ctypes.c_int, ctypes.POINTER(TimeSpec)]
 
-    t = timespec()
+    t = TimeSpec()
 
     if clock_gettime(CLOCK_MONOTONIC_RAW, ctypes.pointer(t)) != 0:
         errno_ = ctypes.get_errno()
@@ -770,7 +770,7 @@ def attach_syscall_to_kprobe(b, syscall_list):
             b.attach_kprobe(event=syscall_name, fn_name="do_enter_%s" % fname)
             b.attach_kprobe(event=syscall_name, fn_name="do_return_%s" % fname)
         except KeyboardInterrupt:
-            display.printHeader(b"Exiting ...")
+            display.print_header(b"Exiting ...")
             display.reset()
             display.die = True  # will terminate the thread for keyboard
         except Exception:
@@ -818,17 +818,17 @@ def run(display, b, pid_list, comm_list):
                     # then create it.
                     doc = display.collection.lookup_or_create(k.pid, k.comm)
                     # update the stats for this doc
-                    doc.updatestSysStats(sc)
+                    doc.update_doc_stats(sc)
                     if zeroed is True:
                         doc.keep_previous_count(sc)
 
-            display.printBody()
+            display.print_body()
             # reset the rate for each doc in the collection
-            display.collection.resetInfo()
+            display.collection.reset_info()
         except KeyboardInterrupt:
             break
 
-    display.printHeader(b"Exiting ...")
+    display.print_header(b"Exiting ...")
     display.reset()
     display.die = True  # will terminate the thread for keyboard
 
@@ -882,16 +882,16 @@ def main(display):
     latency = args.latency
     # set the debug global var
     DEBUG = args.debug
-    display.setRefreshIntvl(float(args.interval))
+    display.set_refresh_intvl(float(args.interval))
     b = create_and_load_bpf(syscall_list, latency)
 
     if syscall_list[0] != b"all":
         attach_syscall_to_kprobe(b, syscall_list)
 
-    display.printHeader(b"Collecting first data ...")
+    display.print_header(b"Collecting first data ...")
 
     # Create a thread for the keyboard short key
-    t = threading.Thread(target=display.readKey)
+    t = threading.Thread(target=display.read_key)
     t.start()
     run(display, b, pid_list, comm_list)
     t.join()
@@ -904,7 +904,7 @@ if __name__ == "__main__":
         main(display)
         display.die = True  # will terminate the thread for keyboard
     except Exception:
-        display.printHeader(b"Exiting...")
+        display.print_header(b"Exiting...")
         display.reset()
         display.die = True  # will terminate the thread for keyboard
         traceback.print_exc()
