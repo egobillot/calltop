@@ -37,7 +37,7 @@ class CtCollection:
     """This is a class used to define a collection of doc.
     """
     def __init__(self):
-        self.collection = {}
+        self.doctionary = {}  # doctionary is a dictionary of docs.
 
     def collection_update(self, newDoc):
         """Update an existing document in the collection. If the
@@ -60,12 +60,12 @@ class CtCollection:
         """
         # lookup
         key = str(pid) + str(comm)
-        doc = self.collection.get(key, None)
+        doc = self.doctionary.get(key, None)
         # or create if look up failed
         if doc is None:
             doc = Doc(pid, comm)
             key = str(pid) + str(comm)
-            self.collection[key] = doc
+            self.doctionary[key] = doc
 
         return doc
 
@@ -73,9 +73,9 @@ class CtCollection:
         """Drop a collection and all its documents. It drops also
         all the stats in docs.
         """
-        for doc in self.collection.values():
+        for doc in self.doctionary.values():
             del doc
-        self.collection.clear()
+        self.doctionary.clear()
 
     def write_output(self):
         strOut = "|"+"=" * 77 + "|\n"
@@ -85,13 +85,13 @@ class CtCollection:
         strOut += "|%15s" % "Rate/s"
         strOut += "|%15s|\n" % "Total"
         strOut += "|"+"=" * 77 + "|\n"
-        for doc in self.collection:
+        for doc in self.doctionary:
             strOut += doc.write_output()
 
         return strOut
 
     def reset_info(self):
-        for doc in self.collection.values():
+        for doc in self.doctionary.values():
             doc.sysTotalCntPerIntvl = 0
             doc.reset_info()
 
@@ -398,7 +398,7 @@ class TopDisplay:
         self._print_tab_header()
         y_index = -1
         doc_id = 0
-        for doc in sorted(self.collection.collection.values(),
+        for doc in sorted(self.collection.doctionary.values(),
                           key=self._sort_key,
                           reverse=self.reverseOrder):
             first = True
