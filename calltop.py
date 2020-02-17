@@ -798,6 +798,8 @@ def run(display, b, pid_list, comm_list):
     while display.die is False:
         try:
             sleep(display.refresh_intvl)
+            # reset the rate for each doc in the collection
+            display.collection.reset_info()
             now = monotonic_time()
             for k, v in b["map"].items():
                 # map.clear() or item.__delitem__() are not thread safe !!
@@ -827,8 +829,6 @@ def run(display, b, pid_list, comm_list):
                         doc.keep_previous_count(sc)
 
             display.print_body()
-            # reset the rate for each doc in the collection
-            display.collection.reset_info()
         except KeyboardInterrupt:
             break
 
