@@ -326,7 +326,7 @@ class TopDisplay:
                             ]
         self.reverse_order = True
         self.filter_on = False
-        self.comm_filter = ''
+        self.comm_filter = b''
 
     def _get_display_size(self):
         """return getmaxyx from curses.
@@ -418,7 +418,7 @@ class TopDisplay:
                         doc.stat_time[stat.name][1] = self.refresh_intvl
 
                     rps = stat.cnt_per_intvl / doc.stat_time[stat.name][1]
-                    latency = "%.2f" % float(stat.avg_lat / 1000)
+                    latency = b"%.2f" % float(stat.avg_lat / 1000)
 
                     if first:
                         pid = b"%d" % doc.pid
@@ -597,13 +597,13 @@ class TopDisplay:
         while True:
             k = self.scr.getch()
             if k == curses.ascii.ESC:
-                self.comm_filter = ''
+                self.comm_filter = b''
                 break  # exit filtering mode
             elif k == curses.ascii.NL:
                 break  # validated
             else:
                 if k >= 0 and k < 255:
-                    self.comm_filter += chr(k)
+                    self.comm_filter += chr(k).encode()
                 elif k == 263:  # backspace
                     self.comm_filter = self.comm_filter[:-1]
                 self.print_body()
@@ -680,7 +680,7 @@ class TopDisplay:
         """
         if self.filter_on is True:
             self._print_line(self.h - 1,
-                             "Filter: " + self.comm_filter,
+                             b'Filter: ' + self.comm_filter,
                              False,
                              5)
         else:
