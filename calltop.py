@@ -78,13 +78,13 @@ class CtCollection:
         self.doctionary.clear()
 
     def write_output(self):
-        output = "|"+"=" * 77 + "|\n"
-        output += "|%6s" % " pid "
-        output += "|%16s" % "process name"
-        output += "|%21s" % "function"
-        output += "|%15s" % "Rate/s"
-        output += "|%15s|\n" % "Total"
-        output += "|"+"=" * 77 + "|\n"
+        output = '|'+'=' * 77 + '|\n'
+        output += '|%6s' % ' pid '
+        output += '|%16s' % 'process name'
+        output += '|%21s' % 'function'
+        output += '|%15s' % 'Rate/s'
+        output += '|%15s|\n' % 'Total'
+        output += '|'+'=' * 77 + '|\n'
         for doc in self.doctionary:
             output += doc.write_output()
 
@@ -179,27 +179,27 @@ class Doc:
         self.cum_lat_ref[ct_stat.name] += ct_stat.cum_lat
 
     def write_output(self):
-        output = ""
+        output = b''
         first = True
         for ct_stat in self.ct_stat_list:
             if first:
-                output += "|%6s" % self.pid,
-                output += "|%16s" % self.comm,
-                output += "| %20s" % ct_stat.name,
-                output += "|%15d" % ct_stat.avg_lat,
-                output += "|%15d" % ct_stat.cnt_per_intvl,
-                output += "|%15d|\n" % ct_stat.total
+                output += b'|%6s' % self.pid,
+                output += b'|%16s' % self.comm,
+                output += b'| %20s' % ct_stat.name,
+                output += b'|%15d' % ct_stat.avg_lat,
+                output += b'|%15d' % ct_stat.cnt_per_intvl,
+                output += b'|%15d|\n' % ct_stat.total
 
                 first = False
             else:
-                output += "|%6s" % " ",
-                output += "|%16s" % " ",
-                output += "|%21s" % ct_stat.name,
-                output += "|%15d" % ct_stat.avg_lat,
-                output += "|%15d" % ct_stat.cnt_per_intvl,
-                output += "|%15d|\n" % ct_stat.total
+                output += b'|%6s' % b' ',
+                output += b'|%16s' % b' ',
+                output += b'|%21s' % ct_stat.name,
+                output += b'|%15d' % ct_stat.avg_lat,
+                output += b'|%15d' % ct_stat.cnt_per_intvl,
+                output += b'|%15d|\n' % ct_stat.total
 
-        output += "|"+"=" * 77 + "|\n"
+        output += b'|'+b'=' * 77 + b'|\n'
         return output
 
     def reset_info(self):
@@ -279,11 +279,11 @@ class ctStats:
         self.nb_sample += 1
 
     def write_output(self):
-        output += "[%16s]" % self.name,
-        output += "latInt=%8.2f" % self.avg_lat,
-        output += "cntInt=%8d" % self.cnt_per_intvl,
-        output += "Total=%8d" % self.total,
-        output += "sample=%8d" % self.nb_sample
+        output += '[%16s]' % self.name,
+        output += 'latInt=%8.2f' % self.avg_lat,
+        output += 'cntInt=%8d' % self.cnt_per_intvl,
+        output += 'Total=%8d' % self.total,
+        output += 'sample=%8d' % self.nb_sample
         return output
 
     def reset_info(self):
@@ -295,7 +295,7 @@ class ctStats:
 
 def debug(filename, s,):
     with open(filename, 'a') as f:
-        f.write("%s\n" % s)
+        f.write('%s\n' % s)
 
 
 class TopDisplay:
@@ -311,18 +311,18 @@ class TopDisplay:
         self.die = False
         self.refresh_intvl = 1
         # {columnName, id, current Sort, sortable, sortOrder}
-        self.sort_column = [{"name": "%6s" % "PID", "id": "pid",
-                             "curSort": False, "sortable": True, "order": 1},
-                            {"name": "%17s" % "PROCESS NAME", "id": "process",
-                             "curSort": False, "sortable": True, "order": 1},
-                            {"name": "%21s" % "FUNC NAME", "id": "fname",
-                             "curSort": False, "sortable": False, "order": 1},
-                            {"name": "%16s" % "latency(us)", "id": "rate",
-                             "curSort": False, "sortable": False, "order": -1},
-                            {"name": "%16s" % "call/s", "id": "rate",
-                             "curSort": False, "sortable": True, "order": -1},
-                            {"name": "%16s" % "TOTAL", "id": "total",
-                             "curSort": True, "sortable": True, "order": -1}
+        self.sort_column = [{'name': '%6s' % 'PID', 'id': 'pid',
+                             'curSort': False, 'sortable': True, 'order': 1},
+                            {'name': '%17s' % 'PROCESS NAME', 'id': 'process',
+                             'curSort': False, 'sortable': True, 'order': 1},
+                            {'name': '%21s' % 'FUNC NAME', 'id': 'fname',
+                             'curSort': False, 'sortable': False, 'order': 1},
+                            {'name': '%16s' % 'latency(us)', 'id': 'rate',
+                             'curSort': False, 'sortable': False, 'order': -1},
+                            {'name': '%16s' % 'call/s', 'id': 'rate',
+                             'curSort': False, 'sortable': True, 'order': -1},
+                            {'name': '%16s' % 'TOTAL', 'id': 'total',
+                             'curSort': True, 'sortable': True, 'order': -1}
                             ]
         self.reverse_order = True
         self.filter_on = False
@@ -418,28 +418,28 @@ class TopDisplay:
                         doc.stat_time[stat.name][1] = self.refresh_intvl
 
                     rps = stat.cnt_per_intvl / doc.stat_time[stat.name][1]
-                    latency = b"%.2f" % float(stat.avg_lat / 1000)
+                    latency = b'%.2f' % float(stat.avg_lat / 1000)
 
                     if first:
-                        pid = b"%d" % doc.pid
+                        pid = b'%d' % doc.pid
                         comm = doc.comm
                         first = False
                     else:
-                        pid = comm = b""
+                        pid = comm = b''
 
-                    line = b"%6s " % pid
-                    line += b"%16s " % comm
-                    line += b"%20s " % stat.name
-                    line += b"%15s " % latency
-                    line += b"%15d " % rps
-                    line += b"%15d" % stat.total
+                    line = b'%6s ' % pid
+                    line += b'%16s ' % comm
+                    line += b'%20s ' % stat.name
+                    line += b'%15s ' % latency
+                    line += b'%15d ' % rps
+                    line += b'%15d' % stat.total
 
                     color = doc_id % 2 + 1  # alternate color from pair 1 and 2
                     self._print_line(y_index + 1 - self.top_line_idx,
                                      line, False, color)
         self.bottom_line_idx = y_index
-        self.print_footer(b"z: reset| >/<: sort| +/-: incr/decr sampling rate"
-                          b"| UP/Down (%d/%d)  [refresh=%1.1fs]"
+        self.print_footer(b'z: reset| >/<: sort| +/-: incr/decr sampling rate'
+                          b'| UP/Down (%d/%d)  [refresh=%1.1fs]'
                           % (self.top_line_idx,
                              self.bottom_line_idx,
                              self.refresh_intvl))
@@ -473,10 +473,10 @@ class TopDisplay:
                     self._move(self.h - 1)
                 elif key == ord('s'):  # s for start
                     # go back to first line
-                    self._move(0, "a")
+                    self._move(0, 'a')
                 elif key == ord('e'):  # e for end
                     # go back to last line
-                    self._move(1e12, "a")
+                    self._move(1e12, 'a')
                 elif key == ord('z'):  # z for reset
                     self._reset_collection()
                 elif key == ord('<') or key == 260:  # < or left key
@@ -503,20 +503,20 @@ class TopDisplay:
             except KeyboardInterrupt:
                 break
 
-    def _move(self, y, mode="r"):
+    def _move(self, y, mode='r'):
         """Scroll the page up or down.
 
             Args:
                 y (int): if mode is relative, y is the nb of line to
                 scroll up (y<0) or down (y>0). if mode is absolute, y
                 will the first line of the screen.
-                mode (string) : "r" or "a" : relative or absolute scroll.
+                mode (string) : 'r' or 'a' : relative or absolute scroll.
         """
 
-        if mode == "r":
+        if mode == 'r':
             self.top_line_idx = max(self.top_line_idx + y, 0)
             self.top_line_idx = min(self.top_line_idx, self.bottom_line_idx)
-        elif mode == "a":
+        elif mode == 'a':
             self.top_line_idx = max(y, 0)
             self.top_line_idx = min(y, self.bottom_line_idx)
         else:
@@ -536,13 +536,13 @@ class TopDisplay:
         """
         for idx, val in enumerate(self.sort_column):
             if val['curSort'] is True:
-                if val['id'] == "pid":
+                if val['id'] == 'pid':
                     return doc.pid
-                elif val['id'] == "process":
+                elif val['id'] == 'process':
                     return doc.comm.lower()
-                elif val['id'] == "rate":
+                elif val['id'] == 'rate':
                     return doc.total_func_cnt_per_intvl
-                elif val['id'] == "total":
+                elif val['id'] == 'total':
                     return doc.total_func_cnt
 
     def _reverse_sort_order(self):
@@ -614,7 +614,7 @@ class TopDisplay:
         """Zero counters of the collection. And clear the map
         from the eBPF (TODO).
 
-        TODO need also to clear the b["map"]
+        TODO need also to clear the b['map']
         """
         self.collection.drop()
         self.top_line_idx = 0
@@ -728,14 +728,14 @@ def create_and_load_bpf(syscall_list, latency):
         prog = ebpf_code.read()
 
     if latency:
-        prog = prog.replace("ACTIVATELATENCY", "#define LATENCY", 1)
+        prog = prog.replace('ACTIVATELATENCY', '#define LATENCY', 1)
     else:
-        prog = prog.replace("ACTIVATELATENCY", "#undef LATENCY", 1)
+        prog = prog.replace('ACTIVATELATENCY', '#undef LATENCY', 1)
 
-    if syscall_list[0] == "all":
-        prog = prog.replace("ACTIVATEALLSYSCALL", "#define TRACEPOINT", 1)
+    if syscall_list[0] == 'all':
+        prog = prog.replace('ACTIVATEALLSYSCALL', '#define TRACEPOINT', 1)
     else:
-        prog = prog.replace("ACTIVATEALLSYSCALL", "#undef TRACEPOINT", 1)
+        prog = prog.replace('ACTIVATEALLSYSCALL', '#undef TRACEPOINT', 1)
 
         i = 0
         for fname in syscall_list:
@@ -771,19 +771,19 @@ def attach_syscall_to_kprobe(b, syscall_list):
     for fname in syscall_list:
         try:
             syscall_name = b.get_syscall_fnname(fname)
-            b.attach_kprobe(event=syscall_name, fn_name="do_enter_%s" % fname)
-            b.attach_kprobe(event=syscall_name, fn_name="do_return_%s" % fname)
+            b.attach_kprobe(event=syscall_name, fn_name='do_enter_%s' % fname)
+            b.attach_kprobe(event=syscall_name, fn_name='do_return_%s' % fname)
         except KeyboardInterrupt:
-            display.print_header(b"Exiting ...")
+            display.print_header(b'Exiting ...')
             display.reset()
             display.die = True  # will terminate the thread for keyboard
         except Exception:
-            print("Failed to attach to kprobe %s" % syscall_name)
+            print('Failed to attach to kprobe %s' % syscall_name)
 
 
 def run(display, b, pid_list, comm_list):
     """ Main loop. Sleep interval, then read the data from bpf map
-    (b["map"]) and add it to the collection.
+    (b['map']) and add it to the collection.
         Args:
             b(BPF object). This is the main object for defining a BPF program,
             and interacting with its output.
@@ -793,7 +793,7 @@ def run(display, b, pid_list, comm_list):
             name you want to trace.
     """
     # clear to start collecting everything at the same time
-    b["map"].clear()
+    b['map'].clear()
 
     while display.die is False:
         try:
@@ -801,7 +801,7 @@ def run(display, b, pid_list, comm_list):
             # reset the rate for each doc in the collection
             display.collection.reset_info()
             now = monotonic_time()
-            for k, v in b["map"].items():
+            for k, v in b['map'].items():
                 # map.clear() or item.__delitem__() are not thread safe !!
                 # Unfortunatly we need to delete items in the map, it saves
                 # entries in map.
@@ -809,13 +809,13 @@ def run(display, b, pid_list, comm_list):
                 # by assuming old entries won't create consistency issues
                 zeroed = False
                 if v.startTime < int(now - INACT_THRSLD):
-                    b["map"].__delitem__(k)
+                    b['map'].__delitem__(k)
                     zeroed = True
                 if ((k.pid != 0)
                     and
-                        (str(k.pid) in pid_list or "-1" in pid_list)
+                        (str(k.pid) in pid_list or '-1' in pid_list)
                     and
-                        (k.comm.decode() in comm_list or "all" in comm_list)):
+                        (k.comm.decode() in comm_list or 'all' in comm_list)):
 
                     if not k.fname:  # in case of a syscall fname is empty
                         k.fname = syscall_name(k.sysid)  # get fname
@@ -832,7 +832,7 @@ def run(display, b, pid_list, comm_list):
         except KeyboardInterrupt:
             break
 
-    display.print_header(b"Exiting ...")
+    display.print_header(b'Exiting ...')
     display.reset()
     display.die = True  # will terminate the thread for keyboard
 
@@ -846,41 +846,41 @@ def main(display):
     parser = argparse.ArgumentParser(
         description="""display realtime view of the Linux syscalls.
          It uses eBPF to do the tracing""")
-    parser.add_argument("-e", "--syscall",
-                        help="the list of syscalls to trace "
-                        "-e read,write,sendto",
-                        default="all"
+    parser.add_argument('-e', '--syscall',
+                        help='the list of syscalls to trace '
+                        '-e read,write,sendto',
+                        default='all'
                         )
-    parser.add_argument("-i", "--interval",
-                        help="set the interval in sec",
-                        default="1"
+    parser.add_argument('-i', '--interval',
+                        help='set the interval in sec',
+                        default='1'
                         )
-    parser.add_argument("-p", "--pid",
-                        help="filter on pids"
-                        "eg --pid 10001,10002,10003",
-                        default="-1"
+    parser.add_argument('-p', '--pid',
+                        help='filter on pids'
+                        'eg --pid 10001,10002,10003',
+                        default='-1'
                         )
-    parser.add_argument("-c", "--comm",
-                        help="""filter on comm alias process name
-                        --comm nginx,memcache,redis""",
-                        default="all"
+    parser.add_argument('-c', '--comm',
+                        help='''filter on comm alias process name
+                        --comm nginx,memcache,redis''',
+                        default='all'
                         )
-    parser.add_argument("-d", "--debug", help="print eBPF code",
-                        action="store_true")
+    parser.add_argument('-d', '--debug', help='print eBPF code',
+                        action='store_true')
 
-    parser.add_argument("-l", "--latency", help="display latency of func",
-                        action="store_true")
+    parser.add_argument('-l', '--latency', help='display latency of func',
+                        action='store_true')
 
     args = parser.parse_args()
 
     # get syscalls list
-    syscall_list = args.syscall.split(",")
+    syscall_list = args.syscall.split(',')
 
     # get pid list
-    pid_list = args.pid.split(",")
+    pid_list = args.pid.split(',')
 
     # get comm name list
-    comm_list = args.comm.split(",")
+    comm_list = args.comm.split(',')
 
     # set the latency
     latency = args.latency
@@ -889,10 +889,10 @@ def main(display):
     display.set_refresh_intvl(float(args.interval))
     b = create_and_load_bpf(syscall_list, latency)
 
-    if syscall_list[0] != b"all":
+    if syscall_list[0] != b'all':
         attach_syscall_to_kprobe(b, syscall_list)
 
-    display.print_header(b"Collecting first data ...")
+    display.print_header(b'Collecting first data ...')
 
     # Create a thread for the keyboard short key
     t = threading.Thread(target=display.read_key)
@@ -901,14 +901,14 @@ def main(display):
     t.join()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     try:
         st_coll = CtCollection()  # create a collection
         display = TopDisplay(st_coll)  # create the display of the collection
         main(display)
         display.die = True  # will terminate the thread for keyboard
     except Exception:
-        display.print_header(b"Exiting...")
+        display.print_header(b'Exiting...')
         display.reset()
         display.die = True  # will terminate the thread for keyboard
         traceback.print_exc()
