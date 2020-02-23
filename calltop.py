@@ -599,14 +599,16 @@ class TopDisplay:
             if k == curses.ascii.ESC:
                 self.comm_filter = b''
                 break  # exit filtering mode
-            elif k == curses.ascii.NL:
-                break  # validated
+            elif k == curses.ascii.NL:  # Enter key
+                # curses.ascii.NL = 10
+                break  # validate the filter
+            elif k >= 20 and k < 127:
+                self.comm_filter += chr(k).encode()
+            elif k == 263:  # backspace
+                self.comm_filter = self.comm_filter[:-1]
             else:
-                if k >= 0 and k < 255:
-                    self.comm_filter += chr(k).encode()
-                elif k == 263:  # backspace
-                    self.comm_filter = self.comm_filter[:-1]
-                self.print_body()
+                continue
+            self.print_body()
         self.filter_on = False
         self.print_body()
 
