@@ -909,8 +909,12 @@ if __name__ == '__main__':
         display = TopDisplay(st_coll)  # create the display of the collection
         main(display)
         display.die = True  # will terminate the thread for keyboard
-    except Exception:
+    except Exception as e:
         display.print_header(b'Exiting...')
         display.reset()
         display.die = True  # will terminate the thread for keyboard
-        traceback.print_exc()
+        if str(e) == 'Failed to compile BPF text':
+            print('It fails compiling and load the eBPF. '
+                  'You need to have root access ?')
+        else:
+            traceback.print_exc()
