@@ -293,11 +293,6 @@ class ctStats:
         self.cnt_per_intvl = 0
 
 
-def debug(filename, s,):
-    with open(filename, 'a') as f:
-        f.write('%s\n' % s)
-
-
 class TopDisplay:
 
     def __init__(self, ctCollection):
@@ -715,6 +710,11 @@ def monotonic_time():
         errno_ = ctypes.get_errno()
         raise OSError(errno_, os.strerror(errno_))
     return t.tv_sec * 1e9 + t.tv_nsec
+
+
+def debug(filename, s,):
+    with open(filename, 'a') as f:
+        f.write('%s\n' % s)
 
 
 def create_and_load_bpf(syscall_list, latency):
