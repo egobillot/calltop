@@ -43,7 +43,7 @@ class CtCollection:
         """Update an existing document in the collection. If the
         document does not exist in the colelction, then add it.
             Args:
-                new_doc (Doc) : A document to be updated
+                new_doc (CtDoc) : A document to be updated
         """
         doc = self.lookup_or_create(new_doc.pid, new_doc.comm)
         for ct_stat in new_doc.ct_stat_list:
@@ -56,14 +56,14 @@ class CtCollection:
                 pid (int) : pid of the process
                 comm (str) : name of the process
             Returns :
-                doc (Doc) : The doc new one or already existing
+                doc (CtDoc) : The doc new one or already existing
         """
         # lookup
         key = str(pid) + str(comm)
         doc = self.doctionary.get(key, None)
         # or create if look up failed
         if doc is None:
-            doc = Doc(pid, comm)
+            doc = CtDoc(pid, comm)
             key = str(pid) + str(comm)
             self.doctionary[key] = doc
 
@@ -96,7 +96,7 @@ class CtCollection:
             doc.reset_info()
 
 
-class Doc:
+class CtDoc:
     """This class define the document of a collection. A doc is made
     up of a pid and a process name (comm). pid and comm identify a
     process (and not only pid). The document conatins also a list of
