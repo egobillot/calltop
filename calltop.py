@@ -78,14 +78,23 @@ class CtCollection:
         self.doctionary.clear()
 
     def write_output(self):
-        output = '|'+'=' * 77 + '|\n'
-        output += '|%6s' % ' pid '
-        output += '|%16s' % 'process name'
-        output += '|%21s' % 'function'
-        output += '|%15s' % 'Rate/s'
-        output += '|%15s|\n' % 'Total'
-        output += '|'+'=' * 77 + '|\n'
-        for doc in self.doctionary:
+        """ Generate the output strings related to this collection.
+
+            Returns:
+                output (bytes): a build string containing the header,
+                the pid, the process, the function, the latency, the
+                call rate, the total count for every doc in this.
+                collection.
+        """
+        # Build the header
+        output = b'%6s' % 'Pid'
+        output += b'%17s' % 'Process name'
+        output += b'%21s' % 'Function'
+        output += b'%16s' % 'latency(us)'
+        output += b'%16s' % 'Call/s'
+        output += b'%16s\n' % 'Total'
+        # build the output string.
+        for doc in self.doctionary.values():
             output += doc.write_output()
 
         return output
@@ -179,27 +188,19 @@ class CtDoc:
         self.cum_lat_ref[ct_stat.name] += ct_stat.cum_lat
 
     def write_output(self):
+        """ Generate the output strings related to this doc.
+
+            Returns:
+                output (bytes): a build string containing the pid, the
+                process, the function, the latency, the call rate,
+                the total count for each ctStat in this ctDoc.
+        """
         output = b''
         first = True
         for ct_stat in self.ct_stat_list:
-            if first:
-                output += b'|%6s' % self.pid,
-                output += b'|%16s' % self.comm,
-                output += b'| %20s' % ct_stat.name,
-                output += b'|%15d' % ct_stat.avg_lat,
-                output += b'|%15d' % ct_stat.cnt_per_intvl,
-                output += b'|%15d|\n' % ct_stat.total
-
-                first = False
-            else:
-                output += b'|%6s' % b' ',
-                output += b'|%16s' % b' ',
-                output += b'|%21s' % ct_stat.name,
-                output += b'|%15d' % ct_stat.avg_lat,
-                output += b'|%15d' % ct_stat.cnt_per_intvl,
-                output += b'|%15d|\n' % ct_stat.total
-
-        output += b'|'+b'=' * 77 + b'|\n'
+            output += b'%6d' % self.pid
+            output += b'%17s' % self.comm
+            output += ct_stat.write_output()
         return output
 
     def reset_info(self):
@@ -279,11 +280,16 @@ class ctStats:
         self.nb_sample += 1
 
     def write_output(self):
-        output += '[%16s]' % self.name,
-        output += 'latInt=%8.2f' % self.avg_lat,
-        output += 'cntInt=%8d' % self.cnt_per_intvl,
-        output += 'Total=%8d' % self.total,
-        output += 'sample=%8d' % self.nb_sample
+        """ Generate the output strings related to this ctStats.
+
+            Returns:
+                output (bytes): a build string containing the function,
+                the latency, call rate, the total count.
+        """
+        output = b'%21s' % self.name
+        output += b'%16d' % self.avg_lat
+        output += b'%16d' % self.cnt_per_intvl
+        output += b'%16d\n' % self.total
         return output
 
     def reset_info(self):
@@ -291,6 +297,26 @@ class ctStats:
         set count to 0
         """
         self.cnt_per_intvl = 0
+
+
+class BatchDisplay:
+
+    def __init__(self, ctCollection):
+        self.collection = ctCollection
+        self.die = False
+        self.refresh_intvl = 1
+
+    def print_body(self):
+        print(self.collection.write_output())
+
+    def print_header(self, string):
+        print(string)
+
+    def print_footer(self, string):
+        pass
+
+    def reset(self):
+        pass
 
 
 class TopDisplay:
@@ -306,17 +332,17 @@ class TopDisplay:
         self.die = False
         self.refresh_intvl = 1
         # {columnName, id, current Sort, sortable, sortOrder}
-        self.sort_column = [{'name': '%6s' % 'PID', 'id': 'pid',
+        self.sort_column = [{'name': '%6s' % 'Pid', 'id': 'pid',
                              'curSort': False, 'sortable': True, 'order': 1},
-                            {'name': '%17s' % 'PROCESS NAME', 'id': 'process',
+                            {'name': '%17s' % 'Process name', 'id': 'process',
                              'curSort': False, 'sortable': True, 'order': 1},
-                            {'name': '%21s' % 'FUNC NAME', 'id': 'fname',
+                            {'name': '%21s' % 'Function', 'id': 'fname',
                              'curSort': False, 'sortable': False, 'order': 1},
-                            {'name': '%16s' % 'latency(us)', 'id': 'rate',
+                            {'name': '%16s' % 'Latency(us)', 'id': 'rate',
                              'curSort': False, 'sortable': False, 'order': -1},
-                            {'name': '%16s' % 'call/s', 'id': 'rate',
+                            {'name': '%16s' % 'Call/s', 'id': 'rate',
                              'curSort': False, 'sortable': True, 'order': -1},
-                            {'name': '%16s' % 'TOTAL', 'id': 'total',
+                            {'name': '%16s' % 'Total', 'id': 'total',
                              'curSort': True, 'sortable': True, 'order': -1}
                             ]
         self.reverse_order = True
@@ -839,82 +865,96 @@ def run(display, b, pid_list, comm_list):
     display.die = True  # will terminate the thread for keyboard
 
 
-def main(display):
+def main():
     """Main function.
         Args:
             display (TopDisplay) : object use to print in a 'top' like manner
     """
     global DEBUG
-    parser = argparse.ArgumentParser(
-        description="""display realtime view of the Linux syscalls.
-         It uses eBPF to do the tracing""")
-    parser.add_argument('-e', '--syscall',
-                        help='the list of syscalls to trace '
-                        '-e read,write,sendto',
-                        default='all'
-                        )
-    parser.add_argument('-i', '--interval',
-                        help='set the interval in sec',
-                        default='1'
-                        )
-    parser.add_argument('-p', '--pid',
-                        help='filter on pids'
-                        'eg --pid 10001,10002,10003',
-                        default='-1'
-                        )
-    parser.add_argument('-c', '--comm',
-                        help='''filter on comm alias process name
-                        --comm nginx,memcache,redis''',
-                        default='all'
-                        )
-    parser.add_argument('-d', '--debug', help='print eBPF code',
-                        action='store_true')
+    display = None
+    try:
+        parser = argparse.ArgumentParser(
+            description="""display realtime view of the Linux syscalls.
+            It uses eBPF to do the tracing""")
+        parser.add_argument('-e', '--syscall',
+                            help='the list of syscalls to trace '
+                            '-e read,write,sendto',
+                            default='all'
+                            )
+        parser.add_argument('-i', '--interval',
+                            help='set the interval in sec',
+                            default='1'
+                            )
+        parser.add_argument('-p', '--pid',
+                            help='filter on pids'
+                            'eg --pid 10001,10002,10003',
+                            default='-1'
+                            )
+        parser.add_argument('-c', '--comm',
+                            help='''filter on comm alias process name
+                            --comm nginx,memcache,redis''',
+                            default='all'
+                            )
+        parser.add_argument('-d', '--debug', help='print eBPF code',
+                            action='store_true')
 
-    parser.add_argument('-l', '--latency', help='display latency of func',
-                        action='store_true')
+        parser.add_argument('-l', '--latency', help='display latency of func',
+                            action='store_true')
 
-    args = parser.parse_args()
+        parser.add_argument('-b', '--batch', help='print output in batch mode',
+                            action='store_true',
+                            default=False)
 
-    # get syscalls list
-    syscall_list = args.syscall.split(',')
+        args = parser.parse_args()
 
-    # get pid list
-    pid_list = args.pid.split(',')
+        # get syscalls list
+        syscall_list = args.syscall.split(',')
 
-    # get comm name list
-    comm_list = args.comm.split(',')
+        # get pid list
+        pid_list = args.pid.split(',')
 
-    # set the latency
-    latency = args.latency
-    # set the debug global var
-    DEBUG = args.debug
-    display.set_refresh_intvl(float(args.interval))
-    b = create_and_load_bpf(syscall_list, latency)
+        # get comm name list
+        comm_list = args.comm.split(',')
 
-    if syscall_list[0] != b'all':
-        attach_syscall_to_kprobe(b, syscall_list)
+        # set the latency, DEBUG and batch
+        latency = args.latency
+        batch = args.batch
+        DEBUG = args.debug
 
-    display.print_header(b'Collecting first data ...')
+        b = create_and_load_bpf(syscall_list, latency)
+        if syscall_list[0] != b'all':
+            attach_syscall_to_kprobe(b, syscall_list)
 
-    # Create a thread for the keyboard short key
-    t = threading.Thread(target=display.read_key)
-    t.start()
-    run(display, b, pid_list, comm_list)
-    t.join()
+        st_coll = CtCollection()  # create a collection
+        if batch is True:
+            display = BatchDisplay(st_coll)  # display of the collection
+        else:
+            display = TopDisplay(st_coll)  # display of the collection
+            display.set_refresh_intvl(float(args.interval))
+            # Create a thread for the keyboard short key
+            t = threading.Thread(target=display.read_key)
+            t.start()
+
+        display.print_header(b'Collecting first data ...')
+
+        run(display, b, pid_list, comm_list)
+        if batch is False:
+            t.join()
+        display.die = True  # will terminate the thread for keyboard
+    except Exception as e:
+        if display:
+            display.print_header(b'Exiting...')
+            display.reset()
+            display.die = True  # will terminate the thread for keyboard
+        if str(e) == 'Failed to compile BPF text':
+            print('It fails compiling and load the eBPF. '
+                  'You need to have root access.')
+        else:
+            traceback.print_exc()
 
 
 if __name__ == '__main__':
     try:
-        st_coll = CtCollection()  # create a collection
-        display = TopDisplay(st_coll)  # create the display of the collection
-        main(display)
-        display.die = True  # will terminate the thread for keyboard
+        main()
     except Exception as e:
-        display.print_header(b'Exiting...')
-        display.reset()
-        display.die = True  # will terminate the thread for keyboard
-        if str(e) == 'Failed to compile BPF text':
-            print('It fails compiling and load the eBPF. '
-                  'You need to have root access ?')
-        else:
-            traceback.print_exc()
+        print("got one")
