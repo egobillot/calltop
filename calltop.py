@@ -331,7 +331,7 @@ class Display:
         """
         pass
 
-    def set_efresh_intvl(self, rate):
+    def set_refresh_intvl(self, rate):
         """Set refresh_intvl.
 
             Args:
@@ -392,7 +392,7 @@ class TopDisplay(Display):
         """
         return self.scr.getmaxyx()
 
-    def _update_efresh_intvl(self, direction):
+    def _update_refresh_intvl(self, direction):
         """Increase or decrease the refresh rate.
 
             Args:
@@ -541,10 +541,10 @@ class TopDisplay(Display):
                     self._reverse_sort_order()
                 elif key == ord('+'):
                     # increase sampling rate
-                    self._update_efresh_intvl(+1)
+                    self._update_refresh_intvl(+1)
                 elif key == ord('-'):
                     # decrease sampling rate
-                    self._update_efresh_intvl(-1)
+                    self._update_refresh_intvl(-1)
                 elif key == ord('f'):
                     # filter on comm name
                     self._set_dynamic_filter()
@@ -961,7 +961,7 @@ def main():
             t = threading.Thread(target=display.read_key)
             t.start()
 
-        display.set_efresh_intvl(float(args.interval))
+        display.set_refresh_intvl(float(args.interval))
         display.print_header(b'Collecting first data ...')
 
         run(display, b, pid_list, comm_list)
