@@ -299,7 +299,48 @@ class ctStats:
         self.cnt_per_intvl = 0
 
 
-class BatchDisplay:
+class Display:
+    def __init__(self, ctCollection):
+        self.collection = ctCollection
+        self.die = False
+        self.refresh_intvl = 1
+
+    def print_header(self, string):
+        """Prints string at the first line.
+
+            Args:
+                string (str): the string to print.
+        """
+        pass
+
+    def print_footer(self, string):
+        """Prints string in the footer.
+
+            Args:
+                string (str): the string to print.
+        """
+        pass
+
+    def reset(self):
+        """Reset the display
+        """
+        pass
+
+    def read_key(self):
+        """Catches keys pressed, and associates an action for each key.
+        """
+        pass
+
+    def set_efresh_intvl(self, rate):
+        """Set refresh_intvl.
+
+            Args:
+                rate(int) : the rate.
+        """
+        self.refresh_intvl = rate
+
+
+class BatchDisplay(Display):
 
     def __init__(self, ctCollection):
         self.collection = ctCollection
@@ -312,14 +353,8 @@ class BatchDisplay:
     def print_header(self, string):
         print(string)
 
-    def print_footer(self, string):
-        pass
 
-    def reset(self):
-        pass
-
-
-class TopDisplay:
+class TopDisplay(Display):
 
     def __init__(self, ctCollection):
         self.h = 0
@@ -356,14 +391,6 @@ class TopDisplay:
                 width, height (int,int): width and height of the terminal.
         """
         return self.scr.getmaxyx()
-
-    def set_refresh_intvl(self, rate):
-        """Set refresh_intvl.
-
-            Args:
-                rate(int) : the rate.
-        """
-        self.refresh_intvl = rate
 
     def _update_efresh_intvl(self, direction):
         """Increase or decrease the refresh rate.
@@ -930,11 +957,11 @@ def main():
             display = BatchDisplay(st_coll)  # display of the collection
         else:
             display = TopDisplay(st_coll)  # display of the collection
-            display.set_refresh_intvl(float(args.interval))
             # Create a thread for the keyboard short key
             t = threading.Thread(target=display.read_key)
             t.start()
 
+        display.set_efresh_intvl(float(args.interval))
         display.print_header(b'Collecting first data ...')
 
         run(display, b, pid_list, comm_list)
@@ -954,7 +981,4 @@ def main():
 
 
 if __name__ == '__main__':
-    try:
-        main()
-    except Exception as e:
-        print("got one")
+    main()
