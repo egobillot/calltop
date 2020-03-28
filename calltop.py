@@ -87,12 +87,12 @@ class CtCollection:
                 collection.
         """
         # Build the header
-        output = b'%6s' % 'Pid'
-        output += b'%17s' % 'Process name'
-        output += b'%21s' % 'Function'
-        output += b'%16s' % 'latency(us)'
-        output += b'%16s' % 'Call/s'
-        output += b'%16s\n' % 'Total'
+        output = b'%6s' % b'Pid'
+        output += b'%17s' % b'Process name'
+        output += b'%21s' % b'Function'
+        output += b'%16s' % b'latency(us)'
+        output += b'%16s' % b'Call/s'
+        output += b'%16s\n' % b'Total'
         # build the output string.
         for doc in self.doctionary.values():
             output += doc.write_output()
@@ -348,7 +348,7 @@ class BatchDisplay(Display):
         self.refresh_intvl = 1
 
     def print_body(self):
-        print(self.collection.write_output())
+        print(self.collection.write_output().decode())
 
     def print_header(self, string):
         print(string)
