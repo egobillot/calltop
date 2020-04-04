@@ -39,7 +39,7 @@ BPF_HASH(map, struct key_t, struct value_t, 1024*32);
 ACTIVATEALLSYSCALL
 ACTIVATELATENCY
 
-static int do_enter(void * ctx, char * fname){
+static int syscall_enter(void * ctx, char * fname){
     struct key_t key = {};
     struct value_t valZero = {0,0,0};
     struct value_t *pValue;
@@ -69,7 +69,7 @@ static int do_enter(void * ctx, char * fname){
     return 0;
 }
 #ifdef LATENCY
-static int do_return(void * ctx, char * fname){
+static int syscall_return(void * ctx, char * fname){
     struct key_t key = {};
     struct value_t *pValue;
     // set asap the endtime to improve precision
