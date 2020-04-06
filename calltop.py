@@ -827,7 +827,7 @@ def attach_syscall_to_kprobe(b, syscall_list):
         try:
             syscall_name = b.get_syscall_fnname(fname)
             b.attach_kprobe(event=syscall_name, fn_name='do_enter_%s' % fname)
-            b.attach_kprobe(event=syscall_name, fn_name='do_return_%s' % fname)
+            b.attach_kretprobe(event=syscall_name, fn_name='do_return_%s' % fname)
         except KeyboardInterrupt:
             display.print_header(b'Exiting ...')
             display.reset()
