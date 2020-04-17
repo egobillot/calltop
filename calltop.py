@@ -227,7 +227,7 @@ class ctStats:
         self.cum_lat_per_intvl = cum_lat  # sum of lat during interval
         self.total = cum_count  # total over time (keep increasing)
         self.cum_lat = cum_lat
-        self.avg_lat = float(cum_lat / cum_count)  # avg latency during intvl.
+        self.avg_lat = 0 if cum_count == 0 else float(cum_lat / cum_count)
         self.nb_sample = 1  # first sample
 
     def update_stats(self, stat, counter_ref, cum_lat_ref):
