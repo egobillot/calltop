@@ -25,12 +25,17 @@ import threading
 import traceback
 from time import sleep
 
-from bcc import BPF
+from bcc import BPF, USDT, USDTException
 from bcc.syscall import syscall_name
 
 # Global definition
 DEBUG = 0
 INACT_THRSLD = 1000000000
+
+# create a dictionary of BPF obj associated to usdt where :
+# - key is pid
+# - value is a [USDT, BPF] array.
+u_bpf_dict = {}
 
 
 class CtCollection:
@@ -382,7 +387,9 @@ class TopDisplay(Display):
                             ]
         self.reverse_order = True
         self.filter_on = False
+        self.probe_mode_on = False
         self.comm_filter = b''
+        self.pid_to_probe = b''
 
     def _get_display_size(self):
         """return getmaxyx from curses.
@@ -548,6 +555,9 @@ class TopDisplay(Display):
                 elif key == ord('f'):
                     # filter on comm name
                     self._set_dynamic_filter()
+                elif key == ord('u'):
+                    # run usdt
+                    self._set_usdt_probe()
             except KeyboardInterrupt:
                 break
 
@@ -660,11 +670,38 @@ class TopDisplay(Display):
         self.filter_on = False
         self.print_body()
 
+    def _set_usdt_probe(self):
+        """Set a USDT probe on pid.
+        """
+        self.probe_mode_on = True
+        while True:
+            k = self.scr.getch()
+            if k == curses.ascii.ESC:
+                self.pid_to_probe = b''
+                break  # exit
+            elif k == curses.ascii.NL:  # Enter key
+                # curses.ascii.NL = 10
+                break  # validate the probe
+            elif k >= 48 and k < 58:  # only digit
+                self.pid_to_probe += chr(k).encode()
+            elif k == 263:  # backspace
+                self.pid_to_probe = self.pid_to_probe[:-1]
+            else:
+                continue
+            self.print_body()
+
+        attach_usdt_to_pid(int(self.pid_to_probe), lat=True)
+        self.pid_to_probe = b''
+        self.probe_mode_on = False
+        self.print_body()
+
     def _reset_collection(self):
         """Zero counters of the collection. And clear the map
         from the eBPF (TODO).
 
         TODO need also to clear the b['map']
+        TODO need also to clear the u_bpf_dict[pid][1]['map']
+        
         """
         self.collection.drop()
         self.top_line_idx = 0
@@ -733,6 +770,12 @@ class TopDisplay(Display):
                              b'Filter: ' + self.comm_filter,
                              False,
                              5)
+        elif self.probe_mode_on is True:
+            self._print_line(self.h - 1,
+                             b'Attach probe to: ' + self.pid_to_probe,
+                             False,
+                             5)
+
         else:
             self._print_line(self.h - 1, string, False, 4)
 
@@ -851,12 +894,39 @@ def attach_kprobe_to_syscall(b, syscall_list):
             print('Failed to attach to kprobe %s' % syscall_name)
 
 
-def run(display, b, pid_list, comm_list):
+def attach_usdt_to_pid(pid, lat=False):
+    global u_bpf_dict
+
+    # first make sure the pid exists
+    if not os.path.exists('/proc/%s' % pid):
+        return
+
+    try:
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        with open(dir_path + '/usdt.c', 'r') as usdt_src:
+            prog = usdt_src.read()
+
+        u = USDT(pid=int(pid))
+        u.enable_probe('function__entry', 'usdt_enter')
+        if lat:
+            u.enable_probe('function__return', 'usdt_return')
+            prog = prog.replace('ACTIVATELATENCY', '#define LATENCY', 1)
+        else:
+            prog = prog.replace('ACTIVATELATENCY', '#undef LATENCY', 1)
+
+        u_bpf_dict[pid] = [u, BPF(text=prog, usdt_contexts=[u])]
+
+    except USDTException:
+        return
+
+
+def run(display, b, bpf_dict, pid_list, comm_list):
     """ Main loop. Sleep interval, then read the data from bpf map
     (b['map']) and add it to the collection.
         Args:
             b(BPF object). This is the main object for defining a BPF program,
-            and interacting with its output.
+            and interacting with its output. It is associated to syscalls.
+            bpf_dict(BPF object dictionary). A bpf dictionnay for usdt.
             pid_list (:obj:`list` of :obj:`str`) : list of pids you
             want to trace.
             comm_list (:obj:`list` of :obj:`str`) : list of process
@@ -864,7 +934,7 @@ def run(display, b, pid_list, comm_list):
     """
     # clear to start collecting everything at the same time
     b['map'].clear()
-
+    global u_bpf_dict
     while display.die is False:
         try:
             sleep(display.refresh_intvl)
@@ -889,7 +959,7 @@ def run(display, b, pid_list, comm_list):
 
                     if not k.fname:  # in case of a syscall fname is empty
                         k.fname = syscall_name(k.sysid)  # get fname
-                    sc = ctStats(k.fname, v.counter, v.cumLat)
+                    sc = ctStats(b'[%s]' % k.fname, v.counter, v.cumLat)
                     # lookup the doc in the collection. If it does not exists
                     # then create it.
                     doc = display.collection.lookup_or_create(k.pid, k.comm)
@@ -897,6 +967,27 @@ def run(display, b, pid_list, comm_list):
                     doc.update_doc_stats(sc)
                     if zeroed is True:
                         doc.keep_previous_count(sc)
+
+            for usdt_bpf in u_bpf_dict.values():
+                ubpf = usdt_bpf[1]
+                for k, v in ubpf['map'].items():
+                    zeroed = False
+                    if v.startTime < int(now - INACT_THRSLD):
+                        ubpf['map'].__delitem__(k)
+                        zeroed = True
+                    if ((k.pid != 0)
+                        and
+                            (str(k.pid) in pid_list or '-1' in pid_list)
+                        and
+                            (k.comm.decode() in comm_list or 'all' in comm_list)):
+                        sc = ctStats(k.fname, v.counter, v.cumLat)
+                        # lookup the doc in the collection. If it does not exists
+                        # then create it.
+                        doc = display.collection.lookup_or_create(k.pid, k.comm)
+                        # update the stats for this doc
+                        doc.update_doc_stats(sc)
+                        if zeroed is True:
+                            doc.keep_previous_count(sc)
 
             display.print_body()
         except KeyboardInterrupt:
@@ -913,6 +1004,7 @@ def main():
             display (TopDisplay) : object use to print in a 'top' like manner
     """
     global DEBUG
+    global u_bpf_dict
     display = None
     try:
         parser = argparse.ArgumentParser(
@@ -977,7 +1069,9 @@ def main():
         display.set_refresh_intvl(float(args.interval))
         display.print_header(b'Collecting first data ...')
 
-        run(display, b, pid_list, comm_list)
+        attach_usdt_to_pid(os.getpid(), lat=latency)
+
+        run(display, b, u_bpf_dict, pid_list, comm_list)
         if batch is False:
             t.join()
         display.die = True  # will terminate the thread for keyboard
