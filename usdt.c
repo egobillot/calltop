@@ -13,7 +13,7 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 
-  13-Oct-2019   Emilien Gobillot Created This.
+  17-Apr-2020   Emilien Gobillot Created This.
 */
 
 #include <uapi/linux/ptrace.h>
@@ -33,13 +33,13 @@ struct value_t {
 };
 
 // map is a key/value storage
-BPF_HASH(map, struct key_t, struct value_t, 1024*32);
+BPF_HASH(map, struct key_t, struct value_t, 1024);
 
 //line below will be replaced
-ACTIVATEALLSYSCALL
 ACTIVATELATENCY
 
-static int syscall_enter(void * ctx, char * fname){
+int usdt_enter(struct pt_regs *ctx) {
+    uint64_t addr;
     struct key_t key = {};
     struct value_t valZero = {0,0,0};
     struct value_t *pValue;
@@ -49,17 +49,15 @@ static int syscall_enter(void * ctx, char * fname){
     // Get function name => key.fname
     // Get process name => key.comm
     // Get the PID ==> key.pid (is a u32 so store only pid)
-    strcpy(key.fname, fname);
+    bpf_usdt_readarg(2, ctx, &addr);
+    bpf_probe_read(&key.fname, sizeof(key.fname), (void *)addr);
     bpf_get_current_comm(key.comm, sizeof(key.comm));
     key.pid = bpf_get_current_pid_tgid();
-
     // better use lookup_or_init() rather than lookup()
     // Lookup the key in the map, and return a pointer to its value if it
     // exists, else initialize the key's value to the second argument.
     pValue = map.lookup_or_init(&key, &valZero);
-    if(!pValue)
-        return 0;
-
+    
     pValue->counter++;
     pValue->startTime = stime; // usefull to let userspace clear old map entries
 
@@ -67,83 +65,34 @@ static int syscall_enter(void * ctx, char * fname){
     map.update(&key, pValue);
 
     return 0;
-}
+};
+
+
 #ifdef LATENCY
-static int syscall_return(void * ctx, char * fname){
-    struct key_t key = {};
-    struct value_t *pValue;
-    // set asap the endtime to improve precision
-    u64 endTime = bpf_ktime_get_ns();
-
-    //Build the key ...
-    strcpy(key.fname, fname);
-    bpf_get_current_comm(key.comm, sizeof(key.comm));
-    key.pid = bpf_get_current_pid_tgid();
-
-    // ... to lookup its value
-    pValue=map.lookup(&key);
-    if(!pValue || pValue->startTime == 0)
-        return 0;
-
-    pValue->cumLat += endTime - pValue->startTime;
-    // now update the map
-    map.update(&key, pValue);
-
-    return 0;
-}
-#endif //LATENCY
-
-#ifdef TRACEPOINT
-TRACEPOINT_PROBE(raw_syscalls, sys_enter) {
+int usdt_return(struct pt_regs *ctx) {
+    uint64_t addr;
     struct key_t key = {};
     struct value_t valZero = {0,0,0};
     struct value_t *pValue;
-    u64 stime = bpf_ktime_get_ns();
+    u64 endTime = bpf_ktime_get_ns();
 
     // Build the key
-    // Get id of the syscall => key.sysid
+    // Get function name => key.fname
     // Get process name => key.comm
     // Get the PID ==> key.pid (is a u32 so store only pid)
-    key.sysid = args->id;
+    bpf_usdt_readarg(2, ctx, &addr);
+    bpf_probe_read(&key.fname, sizeof(key.fname), (void *)addr);
     bpf_get_current_comm(key.comm, sizeof(key.comm));
     key.pid = bpf_get_current_pid_tgid();
-
     // better use lookup_or_init() rather than lookup()
     // Lookup the key in the map, and return a pointer to its value if it
     // exists, else initialize the key's value to the second argument.
     pValue = map.lookup_or_init(&key, &valZero);
-    //if(!pValue)
-    //    return 0;
-    pValue->counter++;
-    pValue->startTime = stime;
-
+    
+    pValue->cumLat += endTime - pValue->startTime;
     // update the map
     map.update(&key, pValue);
 
     return 0;
-}
-#ifdef LATENCY
-TRACEPOINT_PROBE(raw_syscalls, sys_exit) {
-    struct key_t key = {};
-    struct value_t *pValue;
-    // set asap the endtime to improve precision
-    u64 endTime = bpf_ktime_get_ns();
-
-    //Build the key ...
-    key.sysid = args->id;
-    bpf_get_current_comm(key.comm, sizeof(key.comm));
-    key.pid = bpf_get_current_pid_tgid();
-
-    // ... to lookup its value
-    pValue=map.lookup(&key);
-    if(!pValue)
-        return 0;
-
-    pValue->cumLat += endTime - pValue->startTime;
-    // now update the map
-    map.update(&key, pValue);
-
-    return 0;
-}
+};
 #endif //LATENCY
-#endif //TRACEPOINT
