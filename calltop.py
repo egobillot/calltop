@@ -372,20 +372,41 @@ class TopDisplay(Display):
         self.die = False
         self.refresh_intvl = 1
         # {columnName, id, current Sort, sortable, sortOrder}
-        self.sort_column = [{'name': '%6s' % 'Pid', 'id': 'pid',
-                             'curSort': False, 'sortable': True, 'order': 1},
-                            {'name': '%17s' % 'Process name', 'id': 'process',
-                             'curSort': False, 'sortable': True, 'order': 1},
-                            {'name': '%21s' % 'Function', 'id': 'fname',
-                             'curSort': False, 'sortable': False, 'order': 1},
-                            {'name': '%16s' % 'Latency(us)', 'id': 'rate',
-                             'curSort': False, 'sortable': False, 'order': -1},
-                            {'name': '%16s' % 'Call/s', 'id': 'rate',
-                             'curSort': False, 'sortable': True, 'order': -1},
-                            {'name': '%16s' % 'Total', 'id': 'total',
-                             'curSort': True, 'sortable': True, 'order': -1}
-                            ]
-        self.reverse_order = True
+        self.sort_column = [
+            {'name': '%6s' % 'Pid', 'id': 'pid',
+             'curSort': False, 'stat_curSort': False,
+             'sortable': True, 'stat_sortable': False,
+             'order': 1, 'stat_order': 1,
+             },
+            {'name': '%17s' % 'Process name', 'id': 'process',
+             'curSort': False, 'stat_curSort': False,
+             'sortable': True, 'stat_sortable': False,
+             'order': 1,  'stat_order': 1
+             },
+            {'name': '%21s' % 'Function', 'id': 'fname',
+             'curSort': False, 'stat_curSort': False,
+             'sortable': False, 'stat_sortable': True,
+             'order': 1, 'stat_order': 1
+             },
+            {'name': '%16s' % 'Latency(us)', 'id': 'latency',
+             'curSort': False, 'stat_curSort': False,
+             'sortable': False, 'stat_sortable': True,
+             'order': -1, 'stat_order': -1
+             },
+            {'name': '%16s' % 'Call/s', 'id': 'rate',
+             'curSort': False, 'stat_curSort': False,
+             'sortable': True, 'stat_sortable': True,
+             'order': -1, 'stat_order': -1
+             },
+            {'name': '%16s' % 'Total', 'id': 'total',
+             'curSort': True, 'stat_curSort': True,
+             'sortable': True, 'stat_sortable': True,
+             'order': -1, 'stat_order': -1
+             }
+        ]
+
+        self.doc_reverse_order = True
+        self.ctstat_reverse_order = True
         self.filter_on = False
         self.probe_mode_on = False
         self.comm_filter = b''
@@ -455,13 +476,15 @@ class TopDisplay(Display):
         y_index = -1
         doc_id = 0
         for doc in sorted(self.collection.doctionary.values(),
-                          key=self._sort_key,
-                          reverse=self.reverse_order):
+                          key=self._sort_key_doc,
+                          reverse=self.doc_reverse_order):
             first = True
             # Aplly filter if it exists
             if (self.comm_filter.lower()) in doc.comm.lower():
                 doc_id += 1
-                for stat in doc.ct_stat_list:
+                for stat in sorted(doc.ct_stat_list,
+                                   key=self._sort_key_ctStat,
+                                   reverse=self.ctstat_reverse_order):
                     y_index += 1
                     if ((y_index < self.top_line_idx) or
                             (y_index - self.top_line_idx > self.h - 3)):
@@ -505,10 +528,14 @@ class TopDisplay(Display):
         - key up/down scroll page by 1 line up or down
         - page up/down scroll page by 1 page up or down
         - 'z' to reset counter
-        - '<' and '>' to sort
+        - '<' and '>' to sort inside doc
+        - right / left key to sort the collection (processes)
+        - 's' and 'e' to reach start or end of the display
         - 'q' to quit
         - 'r' revert sort  order
         - '+' and '-' to inc or decr refresh interval
+        - 'f' to filter on process name
+        - 'u' to add usdt on process
         """
         while self.die is False:
             try:
@@ -534,10 +561,16 @@ class TopDisplay(Display):
                     self._move(1e12, 'a')
                 elif key == ord('z'):  # z for reset
                     self._reset_collection()
-                elif key == ord('<') or key == 260:  # < or left key
+                elif key == ord('<'):  # < key
+                    # sort on left column
+                    self._change_ctstat_sort_order(-1)
+                elif key == ord('>'):  # > key
+                    # sort on right column
+                    self._change_ctstat_sort_order(1)
+                elif key == 260:  # left key
                     # sort on left column
                     self._change_sort_column(-1)
-                elif key == ord('>') or key == 261:  # > or right key
+                elif key == 261:  # right key
                     # sort on right column
                     self._change_sort_column(1)
                 elif key == ord('q'):  # q for quit
@@ -583,7 +616,7 @@ class TopDisplay(Display):
         self.scr.erase()
         self.print_body()
 
-    def _sort_key(self, doc):
+    def _sort_key_doc(self, doc):
         """Customize the sort order for 'sorted' python function.
 
             Args:
@@ -603,6 +636,28 @@ class TopDisplay(Display):
                 elif val['id'] == 'total':
                     return doc.total_func_cnt
 
+    def _sort_key_ctStat(self, ct_stat):
+        """Customize the sort order for 'sorted' python function.
+
+            Args:
+                doc (:obj:`ctStat`): the element used to do the sort
+
+            Returns:
+                The value on wich to make the sort order
+        """
+        for idx, val in enumerate(self.sort_column):
+            if val['stat_curSort'] is True:
+                if val['id'] == 'rate':
+                    # I should return the rps but I do an approx
+                    # and return the cnt_per_interval
+                    return ct_stat.cnt_per_intvl
+                elif val['id'] == 'total':
+                    return ct_stat.total
+                elif val['id'] == 'latency':
+                    return ct_stat.avg_lat
+                else:
+                    return ct_stat.name.lower()
+
     def _reverse_sort_order(self):
         """Reverse the sort order. Takes the sort_column attribute,
         look for the current sort column and reverse its order value
@@ -613,9 +668,9 @@ class TopDisplay(Display):
             if val['curSort'] is True:
                 val['order'] = -1 * val['order']
                 if val['order'] == 1:
-                    self.reverse_order = False
+                    self.doc_reverse_order = False
                 elif val['order'] == -1:
-                    self.reverse_order = True
+                    self.doc_reverse_order = True
                 break
 
     def _change_sort_column(self, shift):
@@ -641,12 +696,40 @@ class TopDisplay(Display):
                 # We have found one; set previous to false and current to True
                 previous['curSort'] = False
                 val['curSort'] = True
+                # Order according to the saved value
+                if val['order'] == 1:
+                    self.doc_reverse_order = False
+                elif val['order'] == -1:
+                    self.doc_reverse_order = True
                 break
-        # Order according to the saved value
-        if val['order'] == 1:
-            self.reverse_order = False
-        elif val['order'] == -1:
-            self.reverse_order = True
+
+    def _change_ctstat_sort_order(self, shift):
+        """Change the column on wich we do the sort of stats.
+        Set also the reverse_order attribute accordingly.
+
+            Args :
+                shift (int): 1 means we use the next right column
+                to do the sort. -1 means it is the left one.
+        """
+        if shift == 1:  # shift right
+            lst = self.sort_column
+        elif shift == -1:  # shift left
+            lst = reversed(self.sort_column)
+        foundCurrent = False
+        for i, val in enumerate(lst, 1):
+            if foundCurrent is False and val['stat_curSort'] is True:
+                previous = val
+                foundCurrent = True
+                continue  # found the current, now set the next
+            if foundCurrent is True and val['stat_sortable'] is True:
+                # We have found one; set previous to false and current to True
+                previous['stat_curSort'] = False
+                val['stat_curSort'] = True
+                if val['id'] == 'fname':
+                    self.ctstat_reverse_order = False
+                else:
+                    self.ctstat_reverse_order = True
+                break
 
     def _set_dynamic_filter(self):
         """Configure a filter on comm name (process name).
@@ -701,7 +784,7 @@ class TopDisplay(Display):
 
         TODO need also to clear the b['map']
         TODO need also to clear the u_bpf_dict[pid][1]['map']
-        
+
         """
         self.collection.drop()
         self.top_line_idx = 0
@@ -746,6 +829,8 @@ class TopDisplay(Display):
             color = opt  # set color to opt
             if val['curSort'] is True:  # This is the column used by sort
                 color = opt_selected  # set color to white/red
+            if val['stat_curSort'] is True:  # This is the column used by sort
+                color += curses.A_STANDOUT
             if w_index >= self.w:  # line will be out of the screen
                 break              # and curses does an ERR in this case
             self.scr.addstr(0, w_index, val['name'], color)
