@@ -1093,31 +1093,34 @@ def main():
     display = None
     try:
         parser = argparse.ArgumentParser(
-            description="""display realtime view of the Linux syscalls.
-            It uses eBPF to do the tracing""")
+            description='''It prints realtime view of the Linux syscalls
+            but also languages method calls. It uses eBPF to do the tracing.
+            So it is working only on Linux.''')
         parser.add_argument('-e', '--syscall',
-                            help='the list of syscalls to trace '
-                            '-e read,write,sendto',
+                            help='''Use to trace ONLY specific syscalls. 
+                            Without this option all syscalls are traced.
+                            example -e read,write,sendto.''',
                             default='all'
                             )
         parser.add_argument('-i', '--interval',
-                            help='set the interval in sec',
+                            help='''set the interval in sec
+                            : -i 0.5 ''',
                             default='1'
                             )
         parser.add_argument('-p', '--pid',
-                            help='filter on pids'
-                            'eg --pid 10001,10002,10003',
+                            help=''' filter on pids
+                            : --pid 10001,10002,10003''',
                             default='-1'
                             )
         parser.add_argument('-c', '--comm',
-                            help='''filter on comm alias process name
-                            --comm nginx,memcache,redis''',
+                            help='''filter on comm
+                            : --comm nginx,memcache,redis''',
                             default='all'
                             )
         parser.add_argument('-d', '--debug', help='print eBPF code',
                             action='store_true')
 
-        parser.add_argument('-l', '--latency', help='display latency of func',
+        parser.add_argument('-l', '--latency', help='display latency of the function you trace',
                             action='store_true')
 
         parser.add_argument('-b', '--batch', help='print output in batch mode',
