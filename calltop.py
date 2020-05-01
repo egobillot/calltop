@@ -1097,33 +1097,36 @@ def main():
             but also languages method calls. It uses eBPF to do the tracing.
             So it is working only on Linux.''')
         parser.add_argument('-e', '--syscall',
-                            help='''Use to trace ONLY specific syscalls. 
-                            Without this option all syscalls are traced.
-                            example -e read,write,sendto.''',
+                            help=b'''-e open,read,write,sendto. 
+                            Used to trace ONLY specific syscalls. It uses 
+                            kprobe. Without this option TRACEPOINT are used 
+                            to get all syscalls.''',
                             default='all'
                             )
         parser.add_argument('-i', '--interval',
-                            help='''set the interval in sec
+                            help='''Set the interval in sec
                             : -i 0.5 ''',
                             default='1'
                             )
         parser.add_argument('-p', '--pid',
-                            help=''' filter on pids
+                            help='''Filter on pids
                             : --pid 10001,10002,10003''',
                             default='-1'
                             )
         parser.add_argument('-c', '--comm',
-                            help='''filter on comm
+                            help='''Filter on comm
                             : --comm nginx,memcache,redis''',
                             default='all'
                             )
-        parser.add_argument('-d', '--debug', help='print eBPF code',
+        #parser.add_argument('-d', '--debug', help='It prints eBPF code',
+        #                    action='store_true')
+
+        parser.add_argument('-l', '--latency',
+                            help='Display latency of the function you trace',
                             action='store_true')
 
-        parser.add_argument('-l', '--latency', help='display latency of the function you trace',
-                            action='store_true')
-
-        parser.add_argument('-b', '--batch', help='print output in batch mode',
+        parser.add_argument('-b', '--batch',
+                            help='Print output in batch mode',
                             action='store_true',
                             default=False)
 
