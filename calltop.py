@@ -1088,7 +1088,6 @@ def main():
         Args:
             display (TopDisplay) : object use to print in a 'top' like manner
     """
-    global DEBUG
     global u_bpf_dict
     display = None
     try:
@@ -1141,10 +1140,9 @@ def main():
         # get comm name list
         comm_list = args.comm.split(',')
 
-        # set the latency, DEBUG and batch
+        # set the latency and batch
         latency = args.latency
         batch = args.batch
-        DEBUG = args.debug
 
         b = create_and_load_bpf(syscalls=syscall_list, lat=latency)
 
