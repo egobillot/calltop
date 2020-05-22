@@ -1,14 +1,14 @@
 # calltop - eBPF powered tracing tool
-## This program provides a lightweight real-time view of **system calls** and traces **python method**.
+## This program provides a lightweight real-time view of **system calls** and traces **python function calls**.
 
-It uses eBPF (linux only) to trace and report stats on system calls and methods calls from python (other languages will be supported soon). By default it traces every system calls for every processes. It then prints the info in a *top-like* manner.
+It uses eBPF (linux only) to trace and report stats on system calls and functions/methods calls from python (other languages will be supported soon). By default it traces every system calls for every processes. It then prints the info in a *top-like* manner.
 
-You can also trace python methods calls from your application by selecting its pid within the tool.
+You can also trace python from your application by selecting its pid within the tool.
 
 ![alt text](https://github.com/egobillot/calltop/raw/master/calltop.gif "calltop")
 
 ### Features
- - display number, rate and latency of system calls or python method calls
+ - display number, rate and latency of system calls or python functions/methods calls.
  - top like output.
     - increase / decrease refresh rate
     - sort stats (pid, process name, total count, rate)
@@ -20,7 +20,7 @@ You can also trace python methods calls from your application by selecting its p
  - filtering in the tool
    - filter dynamically on process name
  - batch mode
- - trace userspace methods (so far limited to python)
+ - trace userspace application functions (so far limited to python)
 
 
 ### Feature in the roadmap
@@ -52,7 +52,7 @@ optional arguments:
 ```
 Then when the tool is running you can :
 - filter on process name : [f] key. Type the filter and press ENTER
-- trace method call from python on your app : [u] key. Type pid of the process you want to trace and press ENTER to validate. It attaches USDT to this pid.
+- trace function/method call from python on your app : [u] key. Type pid of the process you want to trace and press ENTER to validate. It attaches USDT to this pid.
 - reset the datas : 'z' key
 - sort processes with the arrow key (right and left key)
    - you can sort on pid, process name, rate and total call number.
@@ -66,19 +66,18 @@ Then when the tool is running you can :
 
 
 ### Installation
-This tools is written in python and do not need external python packages.
+This tool is written in python and do not need external python packages.
 
 #### iovisor/bcc packages
 It requires the following packages:
 ``` bash
 $ dpkg  -l | grep -e bpfcc
-ii  bpfcc-tools           0.8.0-4       all          tools for BPF Compiler Collection (BCC)
-ii  libbpfcc              0.8.0-4       amd64        shared library for BPF Compiler Collection (BCC)
-ii  python-bpfcc          0.8.0-4       all          Python wrappers for BPF Compiler Collection (BCC)
-ii  python3-bpfcc         0.8.0-4       all          Python 3 wrappers for BPF Compiler Collection (BCC)
+ii  bpfcc-tools           0.12.0-2       all          tools for BPF Compiler Collection (BCC)
+ii  libbpfcc              0.12.0-2       amd64        shared library for BPF Compiler Collection (BCC)
+ii  python-bpfcc          0.12.0-2       all          Python wrappers for BPF Compiler Collection (BCC)
+ii  python3-bpfcc         0.12.0-2       all          Python 3 wrappers for BPF Compiler Collection (BCC)
 ```
 
-You will need to install the above packages. It is already packaged in the major Linux distributions. The packages name may change according to the distribs. The minimum version is 0.8.0. For package versions between 0.5.0 and 0.8.0, it will work if you add manually this file : [syscall.py](https://github.com/iovisor/bcc/blob/master/src/python/bcc/syscall.py)
-For a more detailed installation documentation please refer to the [official one](https://github.com/iovisor/bcc/blob/master/INSTALL.md). 
+You will need to install the above packages. It is already packaged in the major Linux distributions. The packages name may change according to the distribs. The minimum version is 0.12.0. If your distribution is not packaging v0.12 or later, you can follow the detailed installation guide of the [iovisor/bcc project](https://github.com/iovisor/bcc/blob/master/INSTALL.md). 
 
 Developped by Emilien Gobillot
