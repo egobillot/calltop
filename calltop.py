@@ -773,7 +773,12 @@ class TopDisplay(Display):
                 continue
             self.print_body()
 
-        attach_usdt_to_pid(int(self.pid_to_probe), lat=True)
+        try:
+            pid = int(self.pid_to_probe)
+            attach_usdt_to_pid(pid, lat=True)
+        except ValueError:
+            pass
+
         self.pid_to_probe = b''
         self.probe_mode_on = False
         self.print_body()
