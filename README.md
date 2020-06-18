@@ -83,6 +83,12 @@ You will need to install the above packages. It is already packaged in the major
 ### Docker Images
 You can find Dockerfiles. This will help you to test the tool. Because of the container, you will be limited to syscall tracing. Python tracing is not supported in container because we can't *see* the host processes).
 
+To build and run this container use these command lines. You need to be root and add the privileged flag to run it.
+```
+$ docker build . -t calltop --file calltop.bcc@master.Dockerfile
+$ sudo docker run -it -v /sys:/sys  -v /lib/modules:/lib/modules -v /usr/src/:/usr/src --privileged calltop
+```
+
 Have fun !
 
 Developped by Emilien Gobillot
