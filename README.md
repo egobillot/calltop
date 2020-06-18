@@ -80,4 +80,9 @@ ii  python3-bpfcc         0.12.0-2       all          Python 3 wrappers for BPF 
 
 You will need to install the above packages. It is already packaged in the major Linux distributions. The packages name may change according to the distribs. The minimum version is 0.12.0. If your distribution is not packaging v0.12 or later, you can follow the detailed installation guide of the [iovisor/bcc project](https://github.com/iovisor/bcc/blob/master/INSTALL.md). 
 
+### Docker Images
+You can find Dockerfiles. This will help you to test the tool. Because of the container, you will be limited to syscall tracing. Python tracing is not supported in container because we can't *see* the host processes).
+
+Have fun !
+
 Developped by Emilien Gobillot
