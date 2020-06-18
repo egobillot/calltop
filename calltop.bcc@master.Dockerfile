@@ -1,4 +1,5 @@
 FROM alpine:edge  AS builder
+LABEL maintainer="Emilien Gobillot"
 
 RUN apk add \ 
     bison \
