@@ -516,11 +516,10 @@ class TopDisplay(Display):
                     self._print_line(y_index + 1 - self.top_line_idx,
                                      line, False, color)
         self.bottom_line_idx = y_index
-        self.print_footer(b'z: reset| >/<: sort| +/-: incr/decr sampling rate'
-                          b'| UP/Down (%d/%d)  [refresh=%1.1fs]'
-                          % (self.top_line_idx,
-                             self.bottom_line_idx,
-                             self.refresh_intvl))
+        self.print_footer(b'[z: reset][<,>: sort][Up,Down key: move]'
+                          b'[f: filter process][u: trace funcs]'
+                          b'[ +,-: sampl. period=%1.1fs]'
+                          % (self.refresh_intvl))
         self.scr.refresh()
 
     def read_key(self):
