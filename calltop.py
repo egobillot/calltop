@@ -1045,7 +1045,7 @@ def run(display, bpf_dict, pid_list, comm_list):
                     if not usdt_obj and not k.fname:
                         k.fname = syscall_name(k.sysid)
 
-                    sc = ctStats(k.fname, v.counter, v.cumLat)
+                    sc = ctStats(b'[%s]' % k.fname, v.counter, v.cumLat)
                     # lookup the doc in the collection. If it does'not
                     # exists then create it.
                     doc = display.collection.lookup_or_create(k.pid, k.comm)
