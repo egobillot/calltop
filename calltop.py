@@ -1044,8 +1044,10 @@ def run(display, bpf_dict, pid_list, comm_list):
                     # fname is empty with TRACEPOINT on raw_syscall
                     if not usdt_obj and not k.fname:
                         k.fname = syscall_name(k.sysid)
+                    if not usdt_obj:
+                        k.fname = b'[%s]' % k.fname
 
-                    sc = ctStats(b'[%s]' % k.fname, v.counter, v.cumLat)
+                    sc = ctStats(k.fname, v.counter, v.cumLat)
                     # lookup the doc in the collection. If it does'not
                     # exists then create it.
                     doc = display.collection.lookup_or_create(k.pid, k.comm)
