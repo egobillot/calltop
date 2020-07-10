@@ -94,7 +94,7 @@ class CtCollection:
         # Build the header
         output = b'%6s' % b'Pid'
         output += b'%17s' % b'Process name'
-        output += b'%21s' % b'Function'
+        output += b'%32s' % b'Function'
         output += b'%16s' % b'latency(us)'
         output += b'%16s' % b'Call/s'
         output += b'%16s\n' % b'Total'
@@ -291,7 +291,7 @@ class ctStats:
                 output (bytes): a build string containing the function,
                 the latency, call rate, the total count.
         """
-        output = b'%21s' % self.name
+        output = b'%32s' % self.name
         output += b'%16d' % self.avg_lat
         output += b'%16d' % self.cnt_per_intvl
         output += b'%16d\n' % self.total
@@ -383,7 +383,7 @@ class TopDisplay(Display):
              'sortable': True, 'stat_sortable': False,
              'order': 1,  'stat_order': 1
              },
-            {'name': '%21s' % 'Function', 'id': 'fname',
+            {'name': '%33s' % 'Function', 'id': 'fname',
              'curSort': False, 'stat_curSort': True,
              'sortable': False, 'stat_sortable': True,
              'order': 1, 'stat_order': 1
@@ -507,7 +507,7 @@ class TopDisplay(Display):
 
                     line = b'%6s ' % pid
                     line += b'%16s ' % comm
-                    line += b'%20s ' % stat.name
+                    line += b'%32s ' % stat.name
                     line += b'%15s ' % latency
                     line += b'%15d ' % rps
                     line += b'%15d' % stat.total
@@ -1046,6 +1046,8 @@ def run(display, bpf_dict, pid_list, comm_list):
                         k.fname = syscall_name(k.sysid)
                     if not usdt_obj:
                         k.fname = b'[%s]' % k.fname
+                    else:
+                        k.fname = b'{%s}' % k.fname
 
                     sc = ctStats(k.fname, v.counter, v.cumLat)
                     # lookup the doc in the collection. If it does'not
