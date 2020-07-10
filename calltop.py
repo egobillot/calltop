@@ -384,7 +384,7 @@ class TopDisplay(Display):
              'order': 1,  'stat_order': 1
              },
             {'name': '%21s' % 'Function', 'id': 'fname',
-             'curSort': False, 'stat_curSort': False,
+             'curSort': False, 'stat_curSort': True,
              'sortable': False, 'stat_sortable': True,
              'order': 1, 'stat_order': 1
              },
@@ -399,14 +399,14 @@ class TopDisplay(Display):
              'order': -1, 'stat_order': -1
              },
             {'name': '%16s' % 'Total', 'id': 'total',
-             'curSort': True, 'stat_curSort': True,
+             'curSort': True, 'stat_curSort': False,
              'sortable': True, 'stat_sortable': True,
              'order': -1, 'stat_order': -1
              }
         ]
 
         self.doc_reverse_order = True
-        self.ctstat_reverse_order = True
+        self.ctstat_reverse_order = False
         self.filter_on = False
         self.probe_mode_on = False
         self.comm_filter = b''
