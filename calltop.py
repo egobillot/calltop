@@ -20,6 +20,7 @@ import ctypes
 import curses
 import curses.ascii
 import os
+import psutil
 import sys
 import threading
 import traceback
@@ -137,6 +138,7 @@ class CtDoc:
     def __init__(self, pid, comm):
         self.pid = pid
         self.comm = comm
+        self.cmdline = self.pidToCmdline(pid, comm)
         self.total_func_cnt = 0  # the sum of each func call count in this doc
         self.total_func_cnt_per_intvl = 0  # the sum of each func call rates
         self.ct_stat_list = []
@@ -211,6 +213,14 @@ class CtDoc:
     def reset_info(self):
         for ct_stat in self.ct_stat_list:
             ct_stat.reset_info()
+
+    def pidToCmdline(self, pid, comm):
+        try:
+            cmd = psutil.Process(pid).cmdline()
+        except psutil.NoSuchProcess:
+            return comm
+        cmdline = ' '.join(map(str, cmd))
+        return str.encode(cmdline)
 
 
 class ctStats:
@@ -364,7 +374,8 @@ class TopDisplay(Display):
     def __init__(self, ctCollection):
         self.h = 0
         self.w = 0
-        self.scr = None
+        self.w_padding = 0  # used to fill all the screen
+        self.scr = 0
         self.top_line_idx = 0
         self.bottom_line_idx = 0
         self._init_display()
@@ -377,11 +388,6 @@ class TopDisplay(Display):
              'curSort': False, 'stat_curSort': False,
              'sortable': True, 'stat_sortable': False,
              'order': 1, 'stat_order': 1,
-             },
-            {'name': '%17s' % 'Process name', 'id': 'process',
-             'curSort': False, 'stat_curSort': False,
-             'sortable': True, 'stat_sortable': False,
-             'order': 1,  'stat_order': 1
              },
             {'name': '%33s' % 'Function', 'id': 'fname',
              'curSort': False, 'stat_curSort': True,
@@ -402,6 +408,11 @@ class TopDisplay(Display):
              'curSort': True, 'stat_curSort': False,
              'sortable': True, 'stat_sortable': True,
              'order': -1, 'stat_order': -1
+             },
+            {'name': ' %17s' % ('Process name'), 'id': 'process',
+             'curSort': False, 'stat_curSort': False,
+             'sortable': True, 'stat_sortable': False,
+             'order': 1,  'stat_order': 1
              }
         ]
 
@@ -409,6 +420,7 @@ class TopDisplay(Display):
         self.ctstat_reverse_order = False
         self.filter_on = False
         self.probe_mode_on = False
+        self.cmdline_mode = False
         self.comm_filter = b''
         self.pid_to_probe = b''
 
@@ -479,8 +491,9 @@ class TopDisplay(Display):
                           key=self._sort_key_doc,
                           reverse=self.doc_reverse_order):
             first = True
-            # Aplly filter if it exists
-            if (self.comm_filter.lower()) in doc.comm.lower():
+            # Apply filter if it exists
+            f = self.comm_filter.lower()
+            if f in doc.comm.lower() or f in doc.cmdline.lower():
                 doc_id += 1
                 for stat in sorted(doc.ct_stat_list,
                                    key=self._sort_key_ctStat,
@@ -500,17 +513,20 @@ class TopDisplay(Display):
 
                     if first:
                         pid = b'%d' % doc.pid
-                        comm = doc.comm
+                        if self.cmdline_mode:
+                            comm = b' %s' % doc.cmdline
+                        else:
+                            comm = b' %s' % doc.comm
                         first = False
                     else:
                         pid = comm = b''
 
                     line = b'%6s ' % pid
-                    line += b'%16s ' % comm
                     line += b'%32s ' % stat.name
                     line += b'%15s ' % latency
                     line += b'%15d ' % rps
                     line += b'%15d' % stat.total
+                    line += b'%s ' % comm
 
                     color = doc_id % 2 + 1  # alternate color from pair 1 and 2
                     self._print_line(y_index + 1 - self.top_line_idx,
@@ -590,6 +606,8 @@ class TopDisplay(Display):
                 elif key == ord('u'):
                     # run usdt
                     self._set_usdt_probe()
+                elif key == ord('c'):
+                    self.cmdline_mode = not self.cmdline_mode
             except KeyboardInterrupt:
                 break
 
@@ -817,9 +835,10 @@ class TopDisplay(Display):
             option += curses.A_DIM
 
         option += curses.color_pair(colorpair)
+        padded_line = line.ljust(self.w, b' ')
+        self.scr.addstr(y, 0, padded_line[:self.w - 1], option)
+        # self.scr.refresh()
 
-        self.scr.addstr(y, 0, line[:self.w - 1], option)
-        # self.scr.clrtoeol()
 
     def _print_tab_header(self):
         """Create and print the top Header.
@@ -838,6 +857,11 @@ class TopDisplay(Display):
                 break              # and curses does an ERR in this case
             self.scr.addstr(0, w_index, val['name'], color)
             w_index += len(val['name'])
+
+        # now add padding to the header tab
+        if w_index < self.w:
+            self.w_padding = self.w - w_index
+            self.scr.addstr(0, w_index, ' ' * (self.w_padding), color)
 
     def print_header(self, string):
         """Prints string at the first line. header's height = 1 row.

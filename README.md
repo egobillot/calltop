@@ -54,6 +54,7 @@ Then when the tool is running you can :
 - filter on process name : [f] key. Type the filter and press ENTER
 - trace function/method call from python on your app : [u] key. Type pid of the process you want to trace and press ENTER to validate. It attaches USDT to this pid.
 - reset the datas : 'z' key
+- print the command line : 'c' key
 - sort processes with the arrow key (right and left key)
    - you can sort on pid, process name, rate and total call number.
    - you can also revert the sort (increasing or decreasing order) by pressing R keys.
