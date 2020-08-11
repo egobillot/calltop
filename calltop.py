@@ -1167,8 +1167,6 @@ def main():
         display.set_refresh_intvl(float(args.interval))
         display.print_header(b'Collecting first data ...')
 
-        attach_usdt_to_pid(os.getpid(), lat=latency)
-
         run(display, bpf_dict, pid_list, comm_list)
         if batch is False:
             t.join()
