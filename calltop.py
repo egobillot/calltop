@@ -421,7 +421,8 @@ class TopDisplay(Display):
         self.filter_on = False
         self.probe_mode_on = False
         self.cmdline_mode = False
-        self.comm_filter = b''
+        self.filter = {'txt': b'', 'comm': b'',
+                       'sys': b'', 'fn': b'', 'pid': b''}
         self.pid_to_probe = b''
 
     def _get_display_size(self):
@@ -486,55 +487,57 @@ class TopDisplay(Display):
         self.scr.clear()
         self._print_tab_header()
         y_index = -1
-        doc_id = 0
-        for doc in sorted(self.collection.doctionary.values(),
+        color_id = 0
+        for doc in sorted(filter(self._filter_doc,
+                          self.collection.doctionary.values()),
                           key=self._sort_key_doc,
                           reverse=self.doc_reverse_order):
             first = True
-            # Apply filter if it exists
-            f = self.comm_filter.lower()
-            if f in doc.comm.lower() or f in doc.cmdline.lower():
-                doc_id += 1
-                for stat in sorted(doc.ct_stat_list,
-                                   key=self._sort_key_ctStat,
-                                   reverse=self.ctstat_reverse_order):
-                    y_index += 1
-                    if ((y_index < self.top_line_idx) or
-                            (y_index - self.top_line_idx > self.h - 3)):
-                        continue
-                    # Workaround for the very first data of each stats
-                    # int his case intvl == 0, so self.refresh_intvl is used.
-                    # doc.stat_time[stat.name][1] is the interval.
-                    if doc.stat_time[stat.name][1] == 0:
-                        doc.stat_time[stat.name][1] = self.refresh_intvl
+            first_stat = True
+            for stat in sorted(filter(self._filter_stat, doc.ct_stat_list),
+                               key=self._sort_key_ctStat,
+                               reverse=self.ctstat_reverse_order):
+                if first_stat:
+                    color_id += 1
+                    first_stat = False
 
-                    rps = stat.cnt_per_intvl / doc.stat_time[stat.name][1]
-                    latency = b'%.2f' % float(stat.avg_lat / 1000)
+                y_index += 1
+                if ((y_index < self.top_line_idx) or
+                        (y_index - self.top_line_idx > self.h - 3)):
+                    continue
+                # Workaround for the very first data of each stats
+                # in this case intvl == 0, so self.refresh_intvl is used.
+                # doc.stat_time[stat.name][1] is the interval.
+                if doc.stat_time[stat.name][1] == 0:
+                    doc.stat_time[stat.name][1] = self.refresh_intvl
 
-                    if first:
-                        pid = b'%d' % doc.pid
-                        if self.cmdline_mode:
-                            comm = b' %s' % doc.cmdline
-                        else:
-                            comm = b' %s' % doc.comm
-                        first = False
+                rps = stat.cnt_per_intvl / doc.stat_time[stat.name][1]
+                latency = b'%.2f' % float(stat.avg_lat / 1000)
+
+                if first:
+                    pid = b'%d' % doc.pid
+                    if self.cmdline_mode:
+                        comm = b' %s' % doc.cmdline
                     else:
-                        pid = comm = b''
+                        comm = b' %s' % doc.comm
+                    first = False
+                else:
+                    pid = comm = b''
 
-                    line = b'%6s ' % pid
-                    line += b'%32s ' % stat.name
-                    line += b'%15s ' % latency
-                    line += b'%15d ' % rps
-                    line += b'%15d' % stat.total
-                    line += b'%s ' % comm
+                line = b'%6s ' % pid
+                line += b'%32s ' % stat.name
+                line += b'%15s ' % latency
+                line += b'%15d ' % rps
+                line += b'%15d' % stat.total
+                line += b'%s ' % comm
 
-                    color = doc_id % 2 + 1  # alternate color from pair 1 and 2
-                    self._print_line(y_index + 1 - self.top_line_idx,
-                                     line, False, color)
+                color = color_id % 2 + 1  # alternate color from pair 1 and 2
+                self._print_line(y_index + 1 - self.top_line_idx,
+                                 line, False, color)
         self.bottom_line_idx = y_index
-        self.print_footer(b'[z: reset][<,>: sort][Up,Down key: move]'
-                          b'[f: filter process][u: trace funcs]'
-                          b'[ +,-: sampl. period=%1.1fs]'
+        self.print_footer(b'[z:reset] [<,>,left,right:sort] [Up,Down:move] '
+                          b'[f:filter] [u:trace funcs] '
+                          b'[+,-:sampling=%1.1fs]'
                           % (self.refresh_intvl))
         self.scr.refresh()
 
@@ -632,6 +635,18 @@ class TopDisplay(Display):
 
         self.scr.erase()
         self.print_body()
+
+    def _filter_doc(self, doc):
+        if (self.filter['pid'] == b'' or doc.pid == self.filter['pid']) and \
+            (self.filter['comm'] in doc.comm or
+                self.filter['comm'] in doc.cmdline):
+            return True
+        return False
+
+    def _filter_stat(self, stat):
+        if self.filter['sys'] in stat.name and self.filter['fn'] in stat.name:
+            return True
+        return False
 
     def _sort_key_doc(self, doc):
         """Customize the sort order for 'sorted' python function.
@@ -749,24 +764,41 @@ class TopDisplay(Display):
                 break
 
     def _set_dynamic_filter(self):
-        """Configure a filter on comm name (process name).
+        """Configure a filter on comm name (process name), command line,
+        system call, funcion or pid.
         """
         self.filter_on = True
+        f = self.filter
         while True:
             k = self.scr.getch()
             if k == curses.ascii.ESC:
-                self.comm_filter = b''
+                f['txt'] = f['comm'] = f['fn'] = f['pid'] = f['sys'] = b''
                 break  # exit filtering mode
             elif k == curses.ascii.NL:  # Enter key
                 # curses.ascii.NL = 10
                 break  # validate the filter
             elif k >= 20 and k < 127:
-                self.comm_filter += chr(k).encode()
+                f['txt'] += chr(k).encode()
             elif k == 263:  # backspace
-                self.comm_filter = self.comm_filter[:-1]
+                f['txt'] = f['txt'][:-1]
             else:
                 continue
             self.print_body()
+
+        f['comm'] = f['fn'] = f['pid'] = f['sys'] = b''
+
+        for filter_item in f['txt'].split(b','):
+            if filter_item.startswith(b'sys:'):
+                f['sys'] = filter_item.split(b'sys:')[1]
+            elif filter_item.startswith(b'fn:'):
+                f['fn'] = filter_item.split(b'fn:')[1]
+            elif filter_item.startswith(b'comm:'):
+                f['comm'] = filter_item.split(b'comm:')[1]
+            elif filter_item.startswith(b'pid:'):
+                f['pid'] = int(filter_item.split(b'pid:')[1])
+            else:
+                f['comm'] = filter_item
+
         self.filter_on = False
         self.print_body()
 
@@ -839,7 +871,6 @@ class TopDisplay(Display):
         self.scr.addstr(y, 0, padded_line[:self.w - 1], option)
         # self.scr.refresh()
 
-
     def _print_tab_header(self):
         """Create and print the top Header.
         """
@@ -879,7 +910,7 @@ class TopDisplay(Display):
         """
         if self.filter_on is True:
             self._print_line(self.h - 1,
-                             b'Filter: ' + self.comm_filter,
+                             b'Filter: ' + self.filter['txt'],
                              False,
                              5)
         elif self.probe_mode_on is True:

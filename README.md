@@ -18,7 +18,7 @@ You can also trace python from your application by selecting its pid within the 
     - on PIDs
     - on process names
  - filtering in the tool
-   - filter dynamically on process name
+   - filter dynamically on process name, command line, pid, system call, or function.
  - batch mode
  - trace userspace application functions (so far limited to python)
 
@@ -52,6 +52,11 @@ optional arguments:
 ```
 Then when the tool is running you can :
 - filter on process name : [f] key. Type the filter and press ENTER
+   - The filter should look like this : 
+     - `pid:1234`
+     - `sys:read,comm:nginx`
+     - `sys:bpf,comm:calltop`
+     - `fn:print_body,comm:calltop,pid:1234`
 - trace function/method call from python on your app : [u] key. Type pid of the process you want to trace and press ENTER to validate. It attaches USDT to this pid.
 - reset the datas : 'z' key
 - print the command line : 'c' key
