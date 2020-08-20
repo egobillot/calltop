@@ -20,8 +20,8 @@
 #include <linux/blkdev.h>
 
 struct key_t {
-    char fname[64];
-    char comm[64];
+    char fname[32];
+    char comm[TASK_COMM_LEN];
     u32 pid;
 };
 
@@ -88,7 +88,6 @@ int usdt_enter(struct pt_regs *ctx) {
     struct key_t key = {};
     struct value_t valZero = {0,0,0};
     struct value_t *pValue;
-u32 ret;
     u64 stime = bpf_ktime_get_ns();
 
     // Build the key
@@ -96,8 +95,7 @@ u32 ret;
     // Get process name => key.comm
     // Get the PID ==> key.pid (is a u32 so store only pid)
     bpf_usdt_readarg(2, ctx, &addr);
-    ret = bpf_probe_read_str(&key.fname, sizeof(key.fname), (void *)addr);
-    if (ret < 0) {
+    if (bpf_probe_read_str(&key.fname, sizeof(key.fname), (void *)addr) < 0) {
         return 0;
     }
     bpf_get_current_comm(key.comm, sizeof(key.comm));
@@ -129,15 +127,13 @@ int usdt_return(struct pt_regs *ctx) {
     struct key_t key = {};
     struct value_t defaultVal = {1,0,0};
     struct value_t *pValue;
-    u32 ret;
     u64 endTime = bpf_ktime_get_ns();
     // Build the key
     // Get function name => key.fname
     // Get process name => key.comm
     // Get the PID ==> key.pid (is a u32 so store only pid)
     bpf_usdt_readarg(2, ctx, &addr);
-    ret = bpf_probe_read_str(&key.fname, sizeof(key.fname), (void *)addr);
-    if (ret < 0) {
+    if (bpf_probe_read_str(&key.fname, sizeof(key.fname), (void *)addr) < 0) {
         return 0;
     }
     bpf_get_current_comm(key.comm, sizeof(key.comm));
@@ -148,7 +144,7 @@ int usdt_return(struct pt_regs *ctx) {
     // exists, else initialize the key's value to the second argument.In that
     // case, it means this is the frst time we see this function.
     // So init it with defaultVal.
-    defaultVal.startTime = endTime; // in case we did not catch the enter
+    defaultVal.startTime = endTime; // in case we did not catch the enter --> cumLat = 0
     pValue = map.lookup_or_try_init(&key, &defaultVal);
     if (!pValue) {
         return 0;
