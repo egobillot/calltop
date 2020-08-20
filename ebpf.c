@@ -20,8 +20,8 @@
 #include <linux/blkdev.h>
 
 struct key_t {
-    char fname[64];
-    char comm[64];
+    char fname[24]; // longest syscall name is 23 char long
+    char comm[TASK_COMM_LEN];
     u32 pid;
     u32 sysid;
 };
