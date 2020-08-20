@@ -1050,9 +1050,11 @@ def attach_usdt_to_pid(pid, lat=False):
             prog = usdt_src.read()
 
         u = USDT(pid=int(pid))
-        u.enable_probe('function__entry', 'usdt_enter')
+        u.enable_probe_or_bail('function__entry', 'usdt_enter')
+        u.enable_probe_or_bail('gc__start', 'usdt_gc_start')
+        u.enable_probe_or_bail('gc__done', 'usdt_gc_done')
         if lat:
-            u.enable_probe('function__return', 'usdt_return')
+            u.enable_probe_or_bail('function__return', 'usdt_return')
             prog = prog.replace('ACTIVATELATENCY', '#define LATENCY', 1)
         else:
             prog = prog.replace('ACTIVATELATENCY', '#undef LATENCY', 1)

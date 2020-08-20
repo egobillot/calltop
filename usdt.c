@@ -37,12 +37,58 @@ BPF_HASH(map, struct key_t, struct value_t, 1024);
 //line below will be replaced
 ACTIVATELATENCY
 
+int usdt_gc_start(struct pt_regs *ctx) {
+    struct key_t key = {"garbage_collector","",0};
+    struct value_t valZero = {0,0,0};
+    struct value_t *pValue;
+    u64 stime = bpf_ktime_get_ns();
+
+    bpf_get_current_comm(key.comm, sizeof(key.comm));
+    key.pid = bpf_get_current_pid_tgid();
+
+    pValue = map.lookup_or_try_init(&key, &valZero);
+    if(!pValue) {
+            return 0;
+    }
+
+    pValue->counter++;
+    pValue->startTime = stime; // usefull to let userspace clear old map entries
+
+    // update the map
+    map.update(&key, pValue);
+
+    return 0;
+}
+
+
+int usdt_gc_done(struct pt_regs *ctx) {
+    struct key_t key = {"garbage_collector","",0};
+    struct value_t defaultVal = {1,0,0};
+    struct value_t *pValue;
+    u64 endTime = bpf_ktime_get_ns();
+
+    bpf_get_current_comm(key.comm, sizeof(key.comm));
+    key.pid = bpf_get_current_pid_tgid();
+    defaultVal.startTime = endTime; // in case we did not catch the enter --> cumLat = 0
+
+    pValue = map.lookup_or_try_init(&key, &defaultVal);
+    if (!pValue) {
+        return 0;
+    }
+
+    pValue->cumLat += endTime - pValue->startTime;
+    // update the map
+    map.update(&key, pValue);
+
+    return 0;
+}
+
 int usdt_enter(struct pt_regs *ctx) {
     uint64_t addr;
     struct key_t key = {};
     struct value_t valZero = {0,0,0};
     struct value_t *pValue;
-    u32 ret;
+u32 ret;
     u64 stime = bpf_ktime_get_ns();
 
     // Build the key
