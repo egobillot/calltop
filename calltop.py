@@ -1136,9 +1136,9 @@ def main():
             but also languages method calls. It uses eBPF to do the tracing.
             So it is working only on Linux.''')
         parser.add_argument('-e', '--syscall',
-                            help=b'''-e open,read,write,sendto. 
-                            Used to trace ONLY specific syscalls. It uses 
-                            kprobe. Without this option TRACEPOINT are used 
+                            help='''-e open,read,write,sendto.
+                            Used to trace ONLY specific syscalls. It uses
+                            kprobe. Without this option TRACEPOINT are used
                             to get all syscalls.''',
                             default='all'
                             )
