@@ -20,7 +20,6 @@ import ctypes
 import curses
 import curses.ascii
 import os
-import psutil
 import sys
 import threading
 import traceback
@@ -216,11 +215,11 @@ class CtDoc:
 
     def pidToCmdline(self, pid, comm):
         try:
-            cmd = psutil.Process(pid).cmdline()
-        except psutil.NoSuchProcess:
+            with open('/proc/%s/cmdline' % pid, 'r') as f:
+                cmd = f.read().replace('\00', ' ')
+                return str.encode(cmd)
+        except FileNotFoundError:
             return comm
-        cmdline = ' '.join(map(str, cmd))
-        return str.encode(cmdline)
 
 
 class ctStats:
