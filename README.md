@@ -32,23 +32,25 @@ You can also trace python from your application by selecting its pid within the 
 The usage output brings most of the information
 ```
 # sudo ./calltop.py -h
-usage: calltop.py [-h] [-e SYSCALL] [-i INTERVAL] [-p PID] [-c COMM] [-d] [-l]
-                  [-b]
+usage: calltop.py [-h] [-e SYSCALL] [-i INTERVAL] [-p PID] [-c COMM]
+                  [--no-latency] [-b]
 
-display realtime view of the Linux syscalls. It uses eBPF to do the tracing
+It prints realtime view of the Linux syscalls but also languages method calls.
+It uses eBPF to do the tracing. So it is working only on Linux.
 
 optional arguments:
   -h, --help            show this help message and exit
   -e SYSCALL, --syscall SYSCALL
-                        the of syscalls to trace : -e read,write,sendto
+                        -e open,read,write,sendto. Used to trace ONLY specific
+                        syscalls. It uses kprobe. Without this option
+                        TRACEPOINT are used to get all syscalls.
   -i INTERVAL, --interval INTERVAL
-                        set the interval in sec : -i 0.5
-  -p PID, --pid PID     filter on pids : --pid 10001,10002,10003
-  -c COMM, --comm COMM  filter on comm : --comm nginx,memcache,redis
-  -d, --debug           print eBPF code
-  -l, --latency         display latency of func
-  -b, --batch           print output in batch mode
-
+                        Set the interval in sec : -i 0.5
+  -p PID, --pid PID     Filter on pids : --pid 10001,10002,10003
+  -c COMM, --comm COMM  Filter on comm : --comm nginx,memcache,redis
+  --no-latency          Do not display latency of the functions you trace. It
+                        saves a few nanoseconds per call.
+  -b, --batch           Print output in batch mode
 ```
 Then when the tool is running you can :
 - filter on process name : [f] key. Type the filter and press ENTER
