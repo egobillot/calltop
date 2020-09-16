@@ -218,7 +218,7 @@ class CtDoc:
             with open('/proc/%s/cmdline' % pid, 'r') as f:
                 cmd = f.read().replace('\00', ' ')
                 return str.encode(cmd)
-        except FileNotFoundError:
+        except IOError:
             return comm
 
 
