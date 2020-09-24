@@ -37,7 +37,7 @@ BPF_HASH(map, struct key_t, struct value_t, 1024);
 //line below will be replaced
 ACTIVATELATENCY
 
-int usdt_gc_start(struct pt_regs *ctx) {
+int gc_in(struct pt_regs *ctx) {
     struct key_t key = {"garbage_collector","",0};
     struct value_t valZero = {0,0,0};
     struct value_t *pValue;
@@ -60,8 +60,46 @@ int usdt_gc_start(struct pt_regs *ctx) {
     return 0;
 }
 
+int fn_in(struct pt_regs *ctx) {
+    uint64_t addr;
+    struct key_t key = {};
+    struct value_t valZero = {0,0,0};
+    struct value_t *pValue;
+    u64 stime = bpf_ktime_get_ns();
 
-int usdt_gc_done(struct pt_regs *ctx) {
+    // Build the key
+    // Get function name => key.fname
+    // Get process name => key.comm
+    // Get the PID ==> key.pid (is a u32 so store only pid)
+    bpf_usdt_readarg(#DATAINDEX, ctx, &addr);
+    if (bpf_probe_read_str(&key.fname, sizeof(key.fname)-1, (void *)addr) < 0) {
+        return 0;
+    }
+    bpf_get_current_comm(key.comm, sizeof(key.comm));
+    key.pid = bpf_get_current_pid_tgid();
+
+    // Better use lookup_or_try_init() than lookup_or_init().
+    // The problem is that lookup_or_try_init comes with v0.12
+    // of the bcc tools.
+    // Lookup the key in the map, and return a pointer to its value if it
+    // exists, else initialize the key's value to the second argument.
+    pValue = map.lookup_or_try_init(&key, &valZero);
+    if(!pValue) {
+        return 0;
+    }
+
+    pValue->counter++;
+    pValue->startTime = stime; // usefull to let userspace clear old map entries
+
+    // update the map
+    map.update(&key, pValue);
+
+    return 0;
+}
+
+
+#ifdef LATENCY
+int gc_out(struct pt_regs *ctx) {
     struct key_t key = {"garbage_collector","",0};
     struct value_t defaultVal = {1,0,0};
     struct value_t *pValue;
@@ -83,46 +121,7 @@ int usdt_gc_done(struct pt_regs *ctx) {
     return 0;
 }
 
-int usdt_enter(struct pt_regs *ctx) {
-    uint64_t addr;
-    struct key_t key = {};
-    struct value_t valZero = {0,0,0};
-    struct value_t *pValue;
-    u64 stime = bpf_ktime_get_ns();
-
-    // Build the key
-    // Get function name => key.fname
-    // Get process name => key.comm
-    // Get the PID ==> key.pid (is a u32 so store only pid)
-    bpf_usdt_readarg(2, ctx, &addr);
-    if (bpf_probe_read_str(&key.fname, sizeof(key.fname), (void *)addr) < 0) {
-        return 0;
-    }
-    bpf_get_current_comm(key.comm, sizeof(key.comm));
-    key.pid = bpf_get_current_pid_tgid();
-
-    // Better use lookup_or_try_init() than lookup_or_init().
-    // The problem is that lookup_or_try_init comes with v0.12
-    // of the bcc tools.
-    // Lookup the key in the map, and return a pointer to its value if it
-    // exists, else initialize the key's value to the second argument.
-    pValue = map.lookup_or_try_init(&key, &valZero);
-    if(!pValue) {
-            return 0;
-    }
-
-    pValue->counter++;
-    pValue->startTime = stime; // usefull to let userspace clear old map entries
-
-    // update the map
-    map.update(&key, pValue);
-
-    return 0;
-}
-
-
-#ifdef LATENCY
-int usdt_return(struct pt_regs *ctx) {
+int fn_out(struct pt_regs *ctx) {
     uint64_t addr;
     struct key_t key = {};
     struct value_t defaultVal = {1,0,0};
@@ -132,8 +131,8 @@ int usdt_return(struct pt_regs *ctx) {
     // Get function name => key.fname
     // Get process name => key.comm
     // Get the PID ==> key.pid (is a u32 so store only pid)
-    bpf_usdt_readarg(2, ctx, &addr);
-    if (bpf_probe_read_str(&key.fname, sizeof(key.fname), (void *)addr) < 0) {
+    bpf_usdt_readarg(#DATAINDEX, ctx, &addr);
+    if (bpf_probe_read_str(&key.fname, sizeof(key.fname)-1, (void *)addr) < 0) {
         return 0;
     }
     bpf_get_current_comm(key.comm, sizeof(key.comm));

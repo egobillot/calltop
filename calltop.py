@@ -25,7 +25,7 @@ import threading
 import traceback
 from time import sleep
 
-from bcc import BPF, USDT, USDTException
+from bcc import BPF, USDT, USDTException, utils
 from bcc.syscall import syscall_name
 
 # Global definition
@@ -36,6 +36,28 @@ INACT_THRSLD = 1000000000
 # - key is pid in case of usdt or 'syscall' for the bpf that collects syscalls
 # - value is an array like [USDT, BPF] or [None, BPF] for syscalls
 bpf_dict = {}
+lang_prop = {
+    'python': {
+        'method_id': 2,
+        'in': {'fn_in': 'function__entry', 'gc_in': 'gc__start'},
+        'out': {'fn_out': 'function__return', 'gc_out': 'gc__done'}
+    },
+    'ruby': {
+        'method_id': 2,
+        'in': {'fn_in': 'method__entry', 'gc_in': 'gc__sweep__begin'},
+        'out': {'fn_out': 'method__return', 'gc_out': 'gc__sweep__end'}
+    },
+    'php': {
+        'method_id': 1,
+        'in': {'fn_in': 'function__entry'},
+        'out': {'fn_out': 'function__return'}
+    },
+    'java': {
+        'method_id': 4,
+        'in': {'fn_in': 'method__entry'},
+        'out': {'fn_out': 'method__return'}
+    }
+}
 
 
 class CtCollection:
@@ -1036,6 +1058,17 @@ def attach_kprobe_to_syscall(b, syscall_list):
             print('Failed to attach to kprobe %s' % syscall_name)
 
 
+def enable_all_probes(u, lang_prop, lang, latency):
+    segments = lang_prop[lang]['in']
+    segments_latency = lang_prop[lang]['out']
+    all_segments = segments.copy()
+    if latency:
+        all_segments.update(segments_latency)
+
+    for _, usdt_fn in enumerate(all_segments):
+        u.enable_probe_or_bail(all_segments[usdt_fn], '%s' % usdt_fn)
+
+
 def attach_usdt_to_pid(pid, lat=False):
     global bpf_dict
 
@@ -1043,17 +1076,22 @@ def attach_usdt_to_pid(pid, lat=False):
     if not os.path.exists('/proc/%s' % pid):
         return
 
+    def list_lang(x): return [(v) for _, v in enumerate(x)]
+
+    lang = utils.detect_language(list_lang(lang_prop), pid)
+    if lang not in list_lang(lang_prop):
+        return
+
     try:
         dir_path = os.path.dirname(os.path.realpath(__file__))
         with open(dir_path + '/usdt.c', 'r') as usdt_src:
             prog = usdt_src.read()
-
         u = USDT(pid=int(pid))
-        u.enable_probe_or_bail('function__entry', 'usdt_enter')
-        u.enable_probe_or_bail('gc__start', 'usdt_gc_start')
-        u.enable_probe_or_bail('gc__done', 'usdt_gc_done')
+        enable_all_probes(u, lang_prop, lang, lat)
+
+        prog = prog.replace('#DATAINDEX', '%d' % lang_prop[lang]['method_id'])
+
         if lat:
-            u.enable_probe_or_bail('function__return', 'usdt_return')
             prog = prog.replace('ACTIVATELATENCY', '#define LATENCY', 1)
         else:
             prog = prog.replace('ACTIVATELATENCY', '#undef LATENCY', 1)
@@ -1089,8 +1127,12 @@ def run(display, bpf_dict, pid_list, comm_list):
                 for k, v in bpf['map'].items():
                     zeroed = False
                     if v.startTime < int(now - INACT_THRSLD):
-                        bpf['map'].__delitem__(k)
-                        zeroed = True
+                        try:
+                            bpf['map'].__delitem__(k)
+                        except KeyError:
+                            pass  # Ok, delete failed, maybe next time ?
+                        else:
+                            zeroed = True
                     if (k.pid == 0):
                         continue
                     if str(k.pid) not in pid_list and '-1' not in pid_list:
@@ -1103,7 +1145,7 @@ def run(display, bpf_dict, pid_list, comm_list):
                     if not usdt_obj:
                         k.fname = b'[%s]' % k.fname
                     else:
-                        k.fname = b'{%s}' % k.fname
+                        k.fname = b'{%s}' % k.fname  #.decode("utf-8", "ignore").encode('ascii', 'ignore')
 
                     sc = ctStats(k.fname, v.counter, v.cumLat)
                     # lookup the doc in the collection. If it does'not
