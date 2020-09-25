@@ -59,7 +59,7 @@ Then when the tool is running you can :
      - `sys:read,comm:nginx`
      - `sys:bpf,comm:calltop`
      - `fn:print_body,comm:calltop,pid:1234`
-- trace function/method call from python on your app : [u] key. Type pid of the process you want to trace and press ENTER to validate. It attaches USDT to this pid.
+- trace function/method call from python on your app : [t] key. Type pid of the process you want to trace and press ENTER to validate. It attaches USDT to this pid.
 - reset the datas : 'z' key
 - print the command line : 'c' key
 - sort processes with the arrow key (right and left key)

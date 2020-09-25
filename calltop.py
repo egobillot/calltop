@@ -574,7 +574,7 @@ class TopDisplay(Display):
         - 'r' revert sort  order
         - '+' and '-' to inc or decr refresh interval
         - 'f' to filter on process name
-        - 'u' to add usdt on process
+        - 't' to add usdt on process
         """
         while self.die is False:
             try:
@@ -627,7 +627,7 @@ class TopDisplay(Display):
                 elif key == ord('f'):
                     # filter on comm name
                     self._set_dynamic_filter()
-                elif key == ord('u'):
+                elif key == ord('t'):
                     # run usdt
                     self._set_usdt_probe()
                 elif key == ord('c'):
