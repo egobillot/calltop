@@ -1,14 +1,14 @@
 # calltop - eBPF powered tracing tool
-## This program provides a lightweight real-time view of **system calls** and traces **python function calls**.
+## This program provides a lightweight real-time view of **system calls** and traces **python/java/php/ruby function calls**.
 
-It uses eBPF (linux only) to trace and report stats on system calls and functions/methods calls from python (other languages will be supported soon). By default it traces every system calls for every processes. It then prints the info in a *top-like* manner.
+It uses eBPF (linux only) to trace and report stats on system calls and functions/methods calls from python/java/php/ruby (other languages will be supported soon). By default it traces every system calls for every processes. It then prints the info in a *top-like* manner.
 
 You can also trace python from your application by selecting its pid within the tool.
 
 ![alt text](https://github.com/egobillot/calltop/raw/master/calltop.gif "calltop")
 
 ### Features
- - display number, rate and latency of system calls or python functions/methods calls.
+ - display number, rate and latency of system calls or functions/methods calls.
  - top like output.
     - increase / decrease refresh rate
     - sort stats (pid, process name, total count, rate)
@@ -20,7 +20,7 @@ You can also trace python from your application by selecting its pid within the 
  - filtering in the tool
    - filter dynamically on process name, command line, pid, system call, or function.
  - batch mode
- - trace userspace application functions (so far limited to python)
+ - trace userspace application functions.
 
 
 ### Feature in the roadmap
@@ -59,7 +59,7 @@ Then when the tool is running you can :
      - `sys:read,comm:nginx`
      - `sys:bpf,comm:calltop`
      - `fn:print_body,comm:calltop,pid:1234`
-- trace function/method call from python on your app : [t] key. Type pid of the process you want to trace and press ENTER to validate. It attaches USDT to this pid.
+- trace function/method call from python/java/php/ruby in your app : [t] key. Type pid of the process you want to trace and press ENTER to validate. It attaches USDT to this pid.
 - reset the datas : 'z' key
 - print the command line : 'c' key
 - sort processes with the arrow key (right and left key)
