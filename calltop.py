@@ -1067,7 +1067,7 @@ def enable_all_probes(u, lang_prop, lang, latency):
     if latency:
         all_segments.update(segments_latency)
 
-    for _, usdt_fn in enumerate(all_segments):
+    for usdt_fn in all_segments:
         u.enable_probe_or_bail(all_segments[usdt_fn], '%s' % usdt_fn)
 
 
@@ -1078,7 +1078,7 @@ def attach_usdt_to_pid(pid, lat=False):
     if not os.path.exists('/proc/%s' % pid):
         return
 
-    def list_lang(x): return [(v) for _, v in enumerate(x)]
+    def list_lang(x): return [(v) for v in x]
 
     lang = utils.detect_language(list_lang(lang_prop), pid)
     if lang not in list_lang(lang_prop):
