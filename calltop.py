@@ -404,34 +404,34 @@ class TopDisplay(Display):
         self.die = False
         self.refresh_intvl = 1
         # {columnName, id, current Sort, sortable, sortOrder}
-        self.sort_column = [
+        self.columns = [
             {'name': '%6s' % 'Pid', 'id': 'pid',
-             'curSort': False, 'stat_curSort': False,
+             'cur_coll_sort': False, 'doc_current_sort': False,
              'sortable': True, 'stat_sortable': False,
              'order': 1, 'stat_order': 1,
              },
             {'name': '%33s' % 'Function', 'id': 'fname',
-             'curSort': False, 'stat_curSort': True,
+             'cur_coll_sort': False, 'doc_current_sort': True,
              'sortable': False, 'stat_sortable': True,
              'order': 1, 'stat_order': 1
              },
             {'name': '%16s' % 'Latency(us)', 'id': 'latency',
-             'curSort': False, 'stat_curSort': False,
+             'cur_coll_sort': False, 'doc_current_sort': False,
              'sortable': False, 'stat_sortable': True,
              'order': -1, 'stat_order': -1
              },
             {'name': '%16s' % 'Call/s', 'id': 'rate',
-             'curSort': False, 'stat_curSort': False,
+             'cur_coll_sort': False, 'doc_current_sort': False,
              'sortable': True, 'stat_sortable': True,
              'order': -1, 'stat_order': -1
              },
             {'name': '%16s' % 'Total', 'id': 'total',
-             'curSort': True, 'stat_curSort': False,
+             'cur_coll_sort': True, 'doc_current_sort': False,
              'sortable': True, 'stat_sortable': True,
              'order': -1, 'stat_order': -1
              },
             {'name': ' %17s' % ('Process name'), 'id': 'process',
-             'curSort': False, 'stat_curSort': False,
+             'cur_coll_sort': False, 'doc_current_sort': False,
              'sortable': True, 'stat_sortable': False,
              'order': 1,  'stat_order': 1
              }
@@ -678,15 +678,15 @@ class TopDisplay(Display):
             Returns:
                 The value on wich to make the sort order
         """
-        for idx, val in enumerate(self.sort_column):
-            if val['curSort'] is True:
-                if val['id'] == 'pid':
+        for column in self.columns:
+            if column['cur_coll_sort'] is True:
+                if column['id'] == 'pid':
                     return doc.pid
-                elif val['id'] == 'process':
+                elif column['id'] == 'process':
                     return doc.comm.lower()
-                elif val['id'] == 'rate':
+                elif column['id'] == 'rate':
                     return doc.total_func_cnt_per_intvl
-                elif val['id'] == 'total':
+                elif column['id'] == 'total':
                     return doc.total_func_cnt
 
     def _sort_key_ctStat(self, ct_stat):
@@ -698,31 +698,31 @@ class TopDisplay(Display):
             Returns:
                 The value on wich to make the sort order
         """
-        for idx, val in enumerate(self.sort_column):
-            if val['stat_curSort'] is True:
-                if val['id'] == 'rate':
+        for column in self.columns:
+            if column['doc_current_sort'] is True:
+                if column['id'] == 'rate':
                     # I should return the rps but I do an approx
                     # and return the cnt_per_interval
                     return ct_stat.cnt_per_intvl
-                elif val['id'] == 'total':
+                elif column['id'] == 'total':
                     return ct_stat.total
-                elif val['id'] == 'latency':
+                elif column['id'] == 'latency':
                     return ct_stat.avg_lat
                 else:
                     return ct_stat.name.lower()
 
     def _reverse_sort_order(self):
-        """Reverse the sort order. Takes the sort_column attribute,
+        """Reverse the sort order. Takes the columns attribute,
         look for the current sort column and reverse its order value
         (-1 or +1). Finally set the reverse_order boolean attribute used
         by the sorted function.
         """
-        for idx, val in enumerate(self.sort_column):
-            if val['curSort'] is True:
-                val['order'] = -1 * val['order']
-                if val['order'] == 1:
+        for column in self.columns:
+            if column['cur_coll_sort'] is True:
+                column['order'] = -1 * column['order']
+                if column['order'] == 1:
                     self.doc_reverse_order = False
-                elif val['order'] == -1:
+                elif column['order'] == -1:
                     self.doc_reverse_order = True
                 break
 
@@ -736,23 +736,23 @@ class TopDisplay(Display):
                 to do the sort. -1 means it is the left one.
         """
         if shift == 1:  # shift right
-            lst = self.sort_column
+            columns = self.columns
         elif shift == -1:  # shift left
-            lst = reversed(self.sort_column)
+            columns = reversed(self.columns)
         foundCurrent = False
-        for i, val in enumerate(lst, 1):
-            if foundCurrent is False and val['curSort'] is True:
-                previous = val
+        for column in columns:
+            if foundCurrent is False and column['cur_coll_sort'] is True:
+                previous = column
                 foundCurrent = True
                 continue  # found the current, now set the next
-            if foundCurrent is True and val['sortable'] is True:
+            if foundCurrent is True and column['sortable'] is True:
                 # We have found one; set previous to false and current to True
-                previous['curSort'] = False
-                val['curSort'] = True
+                previous['cur_coll_sort'] = False
+                column['cur_coll_sort'] = True
                 # Order according to the saved value
-                if val['order'] == 1:
+                if column['order'] == 1:
                     self.doc_reverse_order = False
-                elif val['order'] == -1:
+                elif column['order'] == -1:
                     self.doc_reverse_order = True
                 break
 
@@ -765,20 +765,20 @@ class TopDisplay(Display):
                 to do the sort. -1 means it is the left one.
         """
         if shift == 1:  # shift right
-            lst = self.sort_column
+            columns = self.columns
         elif shift == -1:  # shift left
-            lst = reversed(self.sort_column)
+            columns = reversed(self.columns)
         foundCurrent = False
-        for i, val in enumerate(lst, 1):
-            if foundCurrent is False and val['stat_curSort'] is True:
-                previous = val
+        for column in columns:
+            if foundCurrent is False and column['doc_current_sort'] is True:
+                previous = column
                 foundCurrent = True
                 continue  # found the current, now set the next
-            if foundCurrent is True and val['stat_sortable'] is True:
+            if foundCurrent is True and column['stat_sortable'] is True:
                 # We have found one; set previous to false and current to True
-                previous['stat_curSort'] = False
-                val['stat_curSort'] = True
-                if val['id'] == 'fname':
+                previous['doc_current_sort'] = False
+                column['doc_current_sort'] = True
+                if column['id'] == 'fname':
                     self.ctstat_reverse_order = False
                 else:
                     self.ctstat_reverse_order = True
@@ -899,16 +899,18 @@ class TopDisplay(Display):
         opt_selected = curses.color_pair(5)
 
         w_index = 0
-        for val in self.sort_column:
+        for column in self.columns:
             color = opt  # set color to opt
-            if val['curSort'] is True:  # This is the column used by sort
+            # column['cur_coll_sort'] The column used to sort over the coll
+            if column['cur_coll_sort'] is True:
                 color = opt_selected  # set color to white/red
-            if val['stat_curSort'] is True:  # This is the column used by sort
+            # column['doc_current_sort'] The column used to sort inside doc
+            if column['doc_current_sort'] is True:
                 color += curses.A_STANDOUT
             if w_index >= self.w:  # line will be out of the screen
                 break              # and curses does an ERR in this case
-            self.scr.addstr(0, w_index, val['name'], color)
-            w_index += len(val['name'])
+            self.scr.addstr(0, w_index, column['name'], color)
+            w_index += len(column['name'])
 
         # now add padding to the header tab
         if w_index < self.w:
