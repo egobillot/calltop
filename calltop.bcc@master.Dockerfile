@@ -41,4 +41,4 @@ RUN ln -s /usr/lib/libbcc.so /usr/lib/libbcc.so.0
 
 COPY calltop.py ebpf.c usdt.c ./
 
-CMD [ "python3", "./calltop.py", "-l" ]
+CMD [ "python3", "./calltop.py" ]
