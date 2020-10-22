@@ -5,7 +5,7 @@ It uses eBPF (linux only) to trace and report stats on system calls and function
 
 You can also trace python from your application by selecting its pid within the tool.
 
-![alt text](https://github.com/egobillot/calltop/raw/master/calltop.gif "calltop")
+![alt text](https://github.com/egobillot/calltop/raw/master/demo/calltop.gif "python tracing")
 
 ### Features
  - display number, rate and latency of system calls or functions/methods calls.
