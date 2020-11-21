@@ -1,14 +1,14 @@
 # calltop - eBPF powered tracing tool
 ## This program provides a lightweight real-time view of **system calls** and traces **python/java/php/ruby function calls**.
 
-It uses eBPF (linux only) to trace and report stats on system calls and functions/methods calls from python/java/php/ruby (other languages will be supported soon). By default it traces every system calls for every processes. It then prints the info in a *top-like* manner.
+It uses eBPF (linux only) to trace and report stats on syscalls and functions/methods calls made by python/java/php/ruby. By default it traces every system calls for every processes. It then prints the info in a *top-like* manner.
 
-You can also trace python from your application by selecting its pid within the tool.
+You can also trace your application calls by selecting its pid within the tool.
 
 ![alt text](https://github.com/egobillot/calltop/raw/master/demo/calltop_python_tracing.gif "python tracing")
 
 ### Features
- - display number, rate and latency of system calls or functions/methods calls.
+ - display number, rate and latency of system calls and functions/methods calls.
  - top like output.
     - increase / decrease refresh rate
     - sort stats (pid, process name, total count, rate)
@@ -19,12 +19,11 @@ You can also trace python from your application by selecting its pid within the 
     - on process names
  - filtering in the tool
    - filter dynamically on process name, command line, pid, system call, or function.
- - batch mode
+ - batch mode (for your scripts)
  - trace userspace application functions.
 
 
 ### Feature in the roadmap
- - use uprobe to catch function calls
  - integration with graphing tools
  - details stats on a given function
 
