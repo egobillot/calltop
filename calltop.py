@@ -798,7 +798,7 @@ class TopDisplay(Display):
             elif k == curses.ascii.NL:  # Enter key
                 # curses.ascii.NL = 10
                 break  # validate the filter
-            elif k >= 20 and k < 127:
+            elif k >= 32 and k < 127:
                 f['txt'] += chr(k).encode()
             elif k == 263:  # backspace
                 f['txt'] = f['txt'][:-1]
