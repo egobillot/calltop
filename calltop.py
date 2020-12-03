@@ -1238,8 +1238,9 @@ def main():
             display = BatchDisplay(st_coll)  # display of the collection
         else:
             display = TopDisplay(st_coll)  # display of the collection
-            # Create a thread for the keyboard short key
-            t = threading.Thread(target=display.read_key)
+            # Create a daemon thread for the keyboard short key
+            # daemon threads are killed when the main process exits.
+            t = threading.Thread(target=display.read_key, daemon=True)
             t.start()
 
         display.set_refresh_intvl(float(args.interval))
@@ -1249,9 +1250,6 @@ def main():
             attach_usdt_to_pid(int(pid), lat=latency)
         run(display, bpf_dict, pid_list, comm_list)
 
-        if batch is False:
-            t.join()
-        display.die = True  # will terminate the thread for keyboard
     except Exception as e:
         if display:
             display.print_header(b'Exiting...')
