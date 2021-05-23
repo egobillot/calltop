@@ -144,6 +144,7 @@ class CtDoc:
             pid (int) : The pid
             comm (str) : The process name
             total_func_cnt (int) : The sum of each counters in this doc
+            total_func_time (int) : The sum of each latencies in this doc
             total_func_cnt_per_intvl (int) : The sum of each function call
             counters in this doc during the interval.
             ct_stat_list (:obj:`list` of :obj:`ct_stat_list`) : The
@@ -161,6 +162,7 @@ class CtDoc:
         self.comm = comm
         self.cmdline = self.pidToCmdline(pid, comm)
         self.total_func_cnt = 0  # the sum of each func call count in this doc
+        self.total_func_time = 0  # the sum of each func call latency in this doc
         self.total_func_cnt_per_intvl = 0  # the sum of each func call rates
         self.ct_stat_list = []
         # we want to keep the reference counter and cumulated Latency.
@@ -188,6 +190,7 @@ class CtDoc:
                                        self.counter_ref[func_call.name],
                                        self.cum_lat_ref[func_call.name])
                 self.total_func_cnt += new_stat.cnt_per_intvl
+                self.total_func_time += new_stat.cum_lat_per_intvl
                 self.total_func_cnt_per_intvl += new_stat.cnt_per_intvl
                 # set timestamp and compute new interval
                 ts = monotonic_time() * 1e-9
@@ -200,6 +203,7 @@ class CtDoc:
         self.cum_lat_ref[new_stat.name] = 0
         self.ct_stat_list.append(new_stat)
         self.total_func_cnt += new_stat.cnt_per_intvl
+        self.total_func_time += new_stat.cum_lat_per_intvl
         self.total_func_cnt_per_intvl += new_stat.cnt_per_intvl
         # initial values are the timestamp and 0 for intvl
         # div by 0 will be manage at the display time
@@ -420,13 +424,23 @@ class TopDisplay(Display):
              'sortable': False, 'stat_sortable': True,
              'order': -1, 'stat_order': -1
              },
-            {'name': '%16s' % 'Call/s', 'id': 'rate',
+            {'name': '%16s' % 'Intv. Lat.(ms)', 'id': 'total_lat',
+             'cur_coll_sort': False, 'doc_current_sort': False,
+             'sortable': False, 'stat_sortable': True,
+             'order': -1, 'stat_order': -1
+             },
+            {'name': '%10s' % 'Call/s', 'id': 'rate',
              'cur_coll_sort': False, 'doc_current_sort': False,
              'sortable': True, 'stat_sortable': True,
              'order': -1, 'stat_order': -1
              },
-            {'name': '%16s' % 'Total', 'id': 'total',
+            {'name': '%16s' % 'Total Call', 'id': 'total',
              'cur_coll_sort': True, 'doc_current_sort': False,
+             'sortable': True, 'stat_sortable': True,
+             'order': -1, 'stat_order': -1
+             },
+            {'name': '%16s' % 'Total Time(ms)', 'id': 'totaltime',
+             'cur_coll_sort': False, 'doc_current_sort': False,
              'sortable': True, 'stat_sortable': True,
              'order': -1, 'stat_order': -1
              },
@@ -534,6 +548,8 @@ class TopDisplay(Display):
 
                 rps = stat.cnt_per_intvl / doc.stat_time[stat.name][1]
                 latency = b'%.2f' % float(stat.avg_lat / 1000)
+                cum_latency = float(stat.cum_lat_per_intvl / 1000000)
+                total_time = float(stat.cum_lat / 1000000)
 
                 if first:
                     pid = b'%d' % doc.pid
@@ -548,8 +564,10 @@ class TopDisplay(Display):
                 line = b'%6s ' % pid
                 line += b'%32s ' % stat.name
                 line += b'%15s ' % latency
-                line += b'%15d ' % rps
+                line += b'%15d ' % cum_latency
+                line += b'%8d ' % rps
                 line += b'%15d' % stat.total
+                line += b'%15d' % total_time
                 line += b'%s ' % comm
 
                 color = color_id % 2 + 1  # alternate color from pair 1 and 2
@@ -688,6 +706,8 @@ class TopDisplay(Display):
                     return doc.total_func_cnt_per_intvl
                 elif column['id'] == 'total':
                     return doc.total_func_cnt
+                elif column['id'] == 'totaltime':
+                    return doc.total_func_time
 
     def _sort_key_ctStat(self, ct_stat):
         """Customize the sort order for 'sorted' python function.
@@ -708,6 +728,10 @@ class TopDisplay(Display):
                     return ct_stat.total
                 elif column['id'] == 'latency':
                     return ct_stat.avg_lat
+                elif column['id'] == 'total_lat':
+                    return ct_stat.cum_lat_per_intvl
+                elif column['id'] == 'totaltime':
+                    return (ct_stat.cum_lat)
                 else:
                     return ct_stat.name.lower()
 
