@@ -1076,10 +1076,6 @@ def attach_kprobe_to_syscall(b, syscall_list):
             # exec syscall_return_%s' (bpf) when we return from syscall_name
             b.attach_kretprobe(event=syscall_name,
                                fn_name='syscall_return_%s' % fname)
-        except KeyboardInterrupt:
-            display.print_header(b'Exiting ...')
-            display.reset()
-            display.die = True  # will terminate the thread for keyboard
         except Exception:
             print('Failed to attach to kprobe %s' % syscall_name)
 
