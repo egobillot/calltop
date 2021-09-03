@@ -518,6 +518,7 @@ class TopDisplay(Display):
         """Print the data in a top like manner. Loops over all the
         collection and print stats related to pid/process/funcname.
         """
+        self.scr.erase()
         self.h, self.w = self._get_display_size()
         self._print_tab_header()
         y_index = -1
@@ -670,7 +671,6 @@ class TopDisplay(Display):
         else:
             return
 
-        self.scr.erase()
         self.print_body()
 
     def _filter_doc(self, doc):
@@ -842,7 +842,6 @@ class TopDisplay(Display):
                 f['comm'] = filter_item
 
         self.filter_on = False
-        self.scr.clear()
         self.print_body()
 
     def _set_usdt_probe(self):
