@@ -519,7 +519,6 @@ class TopDisplay(Display):
         collection and print stats related to pid/process/funcname.
         """
         self.h, self.w = self._get_display_size()
-        self.scr.clear()
         self._print_tab_header()
         y_index = -1
         color_id = 0
@@ -578,7 +577,6 @@ class TopDisplay(Display):
                           b'[f:filter] [u:trace funcs] '
                           b'[+,-:sampling=%1.1fs]'
                           % (self.refresh_intvl))
-        self.scr.refresh()
 
     def read_key(self):
         """Catches keys pressed, and associates an action for each key.
@@ -828,7 +826,6 @@ class TopDisplay(Display):
                 f['txt'] = f['txt'][:-1]
             else:
                 continue
-            self.print_body()
 
         f['comm'] = f['fn'] = f['pid'] = f['sys'] = b''
 
@@ -845,6 +842,7 @@ class TopDisplay(Display):
                 f['comm'] = filter_item
 
         self.filter_on = False
+        self.scr.clear()
         self.print_body()
 
     def _set_usdt_probe(self):
@@ -914,7 +912,6 @@ class TopDisplay(Display):
         option += curses.color_pair(colorpair)
         padded_line = line.ljust(self.w, b' ')
         self.scr.addstr(y, 0, padded_line[:self.w - 1], option)
-        # self.scr.refresh()
 
     def _print_tab_header(self):
         """Create and print the top Header.
