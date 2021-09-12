@@ -573,7 +573,7 @@ class TopDisplay(Display):
                                  line, False, color)
         self.bottom_line_idx = y_index
         self.print_footer(b'[z:reset] [<,>,left,right:sort] [Up,Down:move] '
-                          b'[f:filter] [u:trace funcs] '
+                          b'[f:filter] [t:trace funcs] '
                           b'[+,-:sampling=%1.1fs]'
                           % (self.refresh_intvl))
 
