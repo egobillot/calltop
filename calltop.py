@@ -23,7 +23,7 @@ import os
 import sys
 import threading
 import traceback
-from time import sleep
+from time import monotonic_ns, sleep
 
 from bcc import BPF, USDT, USDTException, utils
 from bcc.syscall import syscall_name
@@ -193,7 +193,7 @@ class CtDoc:
                 self.total_func_time += new_stat.cum_lat_per_intvl
                 self.total_func_cnt_per_intvl += new_stat.cnt_per_intvl
                 # set timestamp and compute new interval
-                ts = monotonic_time() * 1e-9
+                ts = monotonic_ns() * 1e-9
                 intvl = ts - self.stat_time[new_stat.name][0]
                 self.stat_time[new_stat.name] = [ts, intvl]
                 return
@@ -207,7 +207,7 @@ class CtDoc:
         self.total_func_cnt_per_intvl += new_stat.cnt_per_intvl
         # initial values are the timestamp and 0 for intvl
         # div by 0 will be manage at the display time
-        self.stat_time[new_stat.name] = [monotonic_time() * 1e-9, 0]
+        self.stat_time[new_stat.name] = [monotonic_ns() * 1e-9, 0]
 
     def keep_previous_count(self, ct_stat):
         """The stats has been deleted. Preciseley counters and cum_lat has been
@@ -973,27 +973,6 @@ class TimeSpec(ctypes.Structure):
     ]
 
 
-def monotonic_time():
-    """Implements time.monotonic() from python3.
-    Not available in python2.7.
-    code is adapted from https://stackoverflow.com/a/1205762
-        Returns:
-            time in nano seconds
-    """
-    CLOCK_MONOTONIC_RAW = 4  # see <linux/time.h>
-
-    librt = ctypes.CDLL('librt.so.1', use_errno=True)
-    clock_gettime = librt.clock_gettime
-    clock_gettime.argtypes = [ctypes.c_int, ctypes.POINTER(TimeSpec)]
-
-    t = TimeSpec()
-
-    if clock_gettime(CLOCK_MONOTONIC_RAW, ctypes.pointer(t)) != 0:
-        errno_ = ctypes.get_errno()
-        raise OSError(errno_, os.strerror(errno_))
-    return t.tv_sec * 1e9 + t.tv_nsec
-
-
 def debug(filename, s,):
     with open(filename, 'a') as f:
         f.write('%s\n' % s)
@@ -1138,13 +1117,13 @@ def run(display, bpf_dict, pid_list, comm_list):
             sleep(display.refresh_intvl)
             # reset the rate for each doc in the collection
             display.collection.reset_info()
-            now = monotonic_time()
+            now = monotonic_ns()
             for bpf_arr in bpf_dict.values():
                 usdt_obj = bpf_arr[0]  # if None then is the bpf for syscall
                 bpf = bpf_arr[1]
                 for k, v in bpf['map'].items():
                     zeroed = False
-                    if v.startTime < int(now - INACT_THRSLD):
+                    if v.startTime < now - INACT_THRSLD:
                         try:
                             bpf['map'].__delitem__(k)
                         except KeyError:
