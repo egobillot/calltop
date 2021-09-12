@@ -20,7 +20,6 @@ import ctypes
 import curses
 import curses.ascii
 import os
-import sys
 import threading
 import traceback
 from time import monotonic_ns, sleep
@@ -228,7 +227,6 @@ class CtDoc:
                 the total count for each ctStat in this ctDoc.
         """
         output = b''
-        first = True
         for ct_stat in self.ct_stat_list:
             output += b'%6d' % self.pid
             output += b'%17s' % self.comm
@@ -1142,7 +1140,7 @@ def run(display, bpf_dict, pid_list, comm_list):
                     if not usdt_obj:
                         k.fname = b'[%s]' % k.fname
                     else:
-                        k.fname = b'{%s}' % k.fname  #.decode("utf-8", "ignore").encode('ascii', 'ignore')
+                        k.fname = b'{%s}' % k.fname
 
                     sc = ctStats(k.fname, v.counter, v.cumLat)
                     # lookup the doc in the collection. If it does'not
@@ -1196,12 +1194,10 @@ def main():
                             : --comm nginx,memcache,redis''',
                             default='all'
                             )
-        #parser.add_argument('-d', '--debug', help='It prints eBPF code',
-        #                    action='store_true')
 
         parser.add_argument('--no-latency',
-                            help='''Do not display latency of the functions you trace.
-                            It saves a few nanoseconds per call.''',
+                            help='''Do not display latency of the functions
+                            you trace. It saves a few nanoseconds per call.''',
                             action='store_true',
                             default=False)
 
