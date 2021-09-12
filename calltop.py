@@ -927,7 +927,10 @@ class TopDisplay(Display):
                 color += curses.A_STANDOUT
             if w_index >= self.w:  # line will be out of the screen
                 break              # and curses does an ERR in this case
-            self.scr.addstr(0, w_index, column['name'], color)
+            else:
+                margin_right = self.w - w_index
+                col = (column['name'])[:margin_right]
+            self.scr.addstr(0, w_index, col, color)
             w_index += len(column['name'])
 
         # now add padding to the header tab
