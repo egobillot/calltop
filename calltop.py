@@ -442,7 +442,7 @@ class TopDisplay(Display):
              'sortable': True, 'stat_sortable': True,
              'order': -1, 'stat_order': -1
              },
-            {'name': ' %17s' % ('Process name'), 'id': 'process',
+            {'name': '  %s' % 'Process name', 'id': 'process',
              'cur_coll_sort': False, 'doc_current_sort': False,
              'sortable': True, 'stat_sortable': False,
              'order': 1,  'stat_order': 1
@@ -552,21 +552,21 @@ class TopDisplay(Display):
                 if first:
                     pid = b'%d' % doc.pid
                     if self.cmdline_mode:
-                        comm = b' %s' % doc.cmdline
+                        comm = b'%s' % doc.cmdline
                     else:
-                        comm = b' %s' % doc.comm
+                        comm = b'%s' % doc.comm
                     first = False
                 else:
                     pid = comm = b''
 
-                line = b'%6s ' % pid
-                line += b'%32s ' % stat.name
-                line += b'%15s ' % latency
-                line += b'%15d ' % cum_latency
-                line += b'%8d ' % rps
-                line += b'%15d' % stat.total
-                line += b'%15d' % total_time
-                line += b'%s ' % comm
+                line = b'%6s' % pid
+                line += b'%33s' % stat.name
+                line += b'%16s' % latency
+                line += b'%16d' % cum_latency
+                line += b'%10d' % rps
+                line += b'%16d' % stat.total
+                line += b'%16d' % total_time
+                line += b'  %s' % comm
 
                 color = color_id % 2 + 1  # alternate color from pair 1 and 2
                 self._print_line(y_index + 1 - self.top_line_idx,
