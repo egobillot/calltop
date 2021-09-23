@@ -325,7 +325,7 @@ class ctStats:
                 the latency, call rate, the total count.
         """
         output = b'%32s' % self.name
-        output += b'%16d' % self.avg_lat
+        output += b'%16d' % (self.avg_lat / 1000)
         output += b'%16d' % self.cnt_per_intvl
         output += b'%16d\n' % self.total
         return output
