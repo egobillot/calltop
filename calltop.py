@@ -461,30 +461,36 @@ def create_and_load_bpf(syscalls='all', lat=True):
     b = BPF(text=prog)
 
     if 'all' not in syscalls:
-        attach_kprobe_to_syscall(b, syscalls)
+        attach_kprobe_to_syscall(b, syscalls, lat)
 
     return b
 
 
-def attach_kprobe_to_syscall(b, syscall_list):
+def attach_kprobe_to_syscall(b, syscall_list, lat=True):
     """Loop over all the syscall list and attach 2 kprobes, the first
     on the function entrance (kprobe) the second on the exit (kretprobe)
     to get the latency.
         Args:
             b(BPF object). This is the object to define bpf program.
             syscall_list (:obj:`list` of :obj:`str`): syscall name
+            lat (bool) : the eBPF only holds a return probe when the
+            latency is traced.
     """
     for fname in syscall_list:
+        # the local name is not syscall_name, it would shadow the
+        # function imported from bcc.syscall
+        event = None
         try:
-            syscall_name = b.get_syscall_fnname(fname)
-            # exec syscall_enter_%s' (bpf) when we enter in syscall_name
-            b.attach_kprobe(event=syscall_name,
+            event = b.get_syscall_fnname(fname)
+            # exec syscall_enter_%s' (bpf) when we enter in the syscall
+            b.attach_kprobe(event=event,
                             fn_name='syscall_enter_%s' % fname)
-            # exec syscall_return_%s' (bpf) when we return from syscall_name
-            b.attach_kretprobe(event=syscall_name,
-                               fn_name='syscall_return_%s' % fname)
-        except Exception:
-            print('Failed to attach to kprobe %s' % syscall_name)
+            if lat:
+                # exec syscall_return_%s' when we return from the syscall
+                b.attach_kretprobe(event=event,
+                                   fn_name='syscall_return_%s' % fname)
+        except Exception as e:
+            print('Failed to attach a kprobe to %s (%s)' % (event or fname, e))
 
 
 def enable_all_probes(u, lang_prop, lang, latency):
@@ -676,6 +682,12 @@ def run_top(collection, backend, interval, latency):
             interval (float) : the sampling interval
             latency (bool) : False when started with --no-latency
     """
+    # calltop.py may be reached through a symlink, make sure the
+    # directory holding calltop_tui.py is in the path.
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    if dir_path not in sys.path:
+        sys.path.insert(0, dir_path)
+
     try:
         from calltop_tui import CallTopApp
     except ImportError as e:
@@ -763,7 +775,7 @@ def main():
     for pid in pid_list:
         try:
             backend.attach_probe(int(pid))
-        except (ValueError, Exception):
+        except Exception:
             pass
 
     if args.batch:
